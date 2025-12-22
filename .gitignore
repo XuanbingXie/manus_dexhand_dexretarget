@@ -1,0 +1,46 @@
+# Large binary files
+*.zip
+*.so
+*.dll
+*.exe
+*.bin
+*.tar.gz
+*.tgz
+*.7z
+
+# MANUS SDK 文件
+MANUS_Core_3.1.1_SDK.zip
+ManusSDK_v3.1.1/
+SDK/
+dex-retargeting/
+anytwist/
+
+# Build files
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Large data files
+*.h5
+*.pkl
+*.pth
+*.ckpt
