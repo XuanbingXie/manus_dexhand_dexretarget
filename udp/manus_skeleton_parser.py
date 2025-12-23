@@ -94,22 +94,11 @@ class ManusSkeletonParser:
         return nodes
     
     def to_mediapipe_format(self, nodes: List[Dict]) -> np.ndarray:
-        """
-        转换为 MediaPipe 21 关键点格式
-        
-        Args:
-            nodes: Manus 节点列表
-            
-        Returns:
-            shape (21, 3) 的关键点位置数组
-        """
         keypoints = np.zeros((21, 3), dtype=np.float32)
         
-        # 设置固定的手腕位置作为参考点（不使用 node 0）
-        keypoints[0] = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # 手腕固定在原点
+        keypoints[0] = np.array([0.0, 0.0, 0.0], dtype=np.float32)  
         
         for manus_idx, mediapipe_idx in self.manus_to_mediapipe.items():
-            # 跳过手腕节点（node 0）
             if manus_idx == 0:
                 continue
                 
@@ -146,7 +135,7 @@ class ManusSkeletonParser:
     
     def get_finger_joint_angles(self, nodes: List[Dict]) -> Dict[str, float]:
         """
-        从节点旋转计算手指关节角度（简化版本）
+        从节点旋转计算手指关节角度
         
         Args:
             nodes: Manus 节点列表
@@ -163,8 +152,6 @@ class ManusSkeletonParser:
             for i, node_idx in enumerate(node_indices):
                 if node_idx < len(nodes):
                     quat = nodes[node_idx]['rotation']
-                    # 简单地使用四元数的某个分量作为角度（不准确）
-                    # 实际应该计算相对旋转
                     angles[f"{finger_name}_joint_{i}"] = quat[1]  # x 分量
         
         return angles
@@ -193,8 +180,6 @@ def test_parser():
     import socket
     
     parser = ManusSkeletonParser()
-    
-    # 创建 UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("", 5006))
     sock.settimeout(5.0)

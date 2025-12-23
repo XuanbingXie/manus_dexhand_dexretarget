@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-实时 Manus 手套到机器人手的重定向可视化
-使用 MuJoCo 进行可视化，使用 qpos 直接控制关节位置
-"""
 import sys
 import time
 from pathlib import Path
@@ -19,7 +15,6 @@ from dex_retargeting.constants import (
     RobotName,
     RetargetingType,
     HandType,
-    get_default_config_path,
 )
 from dex_retargeting.retargeting_config import RetargetingConfig
 from manus_skeleton_parser import ManusSkeletonParser
@@ -27,7 +22,6 @@ import socket
 
 
 class ManusUDPReceiver:
-    """接收并解析 Manus UDP 数据"""
     
     def __init__(self, port=5006):
         self.port = port
@@ -58,57 +52,36 @@ class ManusUDPReceiver:
         self.sock.close()
 
 
-def get_mujoco_model_path(robot_name: RobotName) -> str:
-    model_paths = {
-        RobotName.shadow: "anytwist/model/robot/shadowhand_right.xml",
-    }
-    
-    if robot_name not in model_paths:
-        available_robots = list(model_paths.keys())
-        raise ValueError(f"MuJoCo model not available for robot: {robot_name}. Available: {available_robots}")
-    
-    model_path = Path(__file__).parent.parent / model_paths[robot_name]
-    if not model_path.exists():
-        raise FileNotFoundError(f"MuJoCo model not found: {model_path}")
-    
-    return str(model_path)
-
-
 def main(
-    robot_name: RobotName,
-    retargeting_type: RetargetingType,
-    hand_type: HandType,
+    retargeting_type: RetargetingType = RetargetingType.vector,
+    hand_type: HandType = HandType.right,
     udp_port: int = 5006,
 ):
-    """
-    从 Manus 手套接收数据并实时重定向到机器人手，使用 MuJoCo 可视化。
-
-    Args:
-        robot_name: 机器人标识符（shadow）
-        retargeting_type: 重定向类型（vector, position, dexpilot）
-        hand_type: 手的类型（right, left）
-        udp_port: UDP 端口号，默认 5006
-    """
+    model_path = Path(__file__).parent.parent / "anytwist/model/robot/gaia_hand16_right.xml"
+    if not model_path.exists():
+        logger.error(f"MuJoCo model not found: {model_path}")
+        return
     
     try:
-        model_path = get_mujoco_model_path(robot_name)
         logger.info(f"Loading MuJoCo model: {model_path}")
-        model = mujoco.MjModel.from_xml_path(model_path)
+        model = mujoco.MjModel.from_xml_path(str(model_path))
         data = mujoco.MjData(model)
     except Exception as e:
         logger.error(f"Failed to load MuJoCo model: {e}")
         return
-
-    config_path = get_default_config_path(robot_name, retargeting_type, hand_type)
-    robot_dir = (
-        Path(__file__).absolute().parent.parent / "dex-retargeting" / "assets" / "dex-urdf" / "robots" / "hands"
-    )
     
-    RetargetingConfig.set_default_urdf_dir(str(robot_dir))
+    hand_type_str = "right" if hand_type == HandType.right else "left"
+    config_path = Path(__file__).parent.parent / f"configs/manus_gaia16_{hand_type_str}.yml"
+    
+    if not config_path.exists():
+        logger.error(f"Config file not found: {config_path}")
+        return
+    
+    RetargetingConfig.set_default_urdf_dir(str(Path(__file__).parent.parent))
     logger.info(f"Loading retargeting config from {config_path}")
     
     try:
-        config = RetargetingConfig.load_from_file(config_path)
+        config = RetargetingConfig.load_from_file(str(config_path))
         retargeting = config.build()
         logger.info("dex-retargeting initialized successfully")
     except Exception as e:
@@ -119,7 +92,6 @@ def main(
     
     logger.info("Starting real-time retargeting loop")
     logger.info(f"Waiting for Manus data on UDP port {udp_port}...")
-    logger.info("Make sure SDKClient_Linux is running and sending data")
     
     frame_count = 0
     last_data_time = time.time()
@@ -154,31 +126,12 @@ def main(
 
                     retargeting_joint_names = retargeting.joint_names
                     
-                    for i, ret_joint_name in enumerate(retargeting_joint_names):
-                        if ret_joint_name.startswith('WRJ'):
-                            continue
-                            
-                        if robot_name == RobotName.shadow:
-                            joint_name = f"rh_{ret_joint_name}"
-                        else:
-                            joint_name = ret_joint_name
-                        
+                    for i, joint_name in enumerate(retargeting_joint_names):
                         try:
                             joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
                             data.qpos[joint_id] = qpos[i]
                         except:
                             pass
-                    
-                    try:
-                        wrist_joints = ['rh_WRJ1', 'rh_WRJ2']
-                        for wrist_joint in wrist_joints:
-                            try:
-                                wrist_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, wrist_joint)
-                                data.qpos[wrist_id] = 0.0
-                            except:
-                                pass
-                    except:
-                        pass
                     
                     fps_counter.append(time.time())
                     
@@ -190,15 +143,6 @@ def main(
                     last_data_time = time.time()
             
             mujoco.mj_forward(model, data)
-            
-            try:
-                wrist_joint_ids = [0, 1]
-                for wrist_id in wrist_joint_ids:
-                    data.qpos[wrist_id] = 0.0
-                    data.qvel[wrist_id] = 0.0
-            except:
-                pass
-            
             viewer.sync()
             
             if time.time() - fps_start_time >= 1.0:
@@ -207,9 +151,8 @@ def main(
                     if retarget_times:
                         avg_retarget_time = np.mean(retarget_times) * 1000
                         max_retarget_time = np.max(retarget_times) * 1000
+                        logger.info(f"FPS: {fps:.1f} | Frame: {frame_count} | Retarget: {avg_retarget_time:.2f}ms (max: {max_retarget_time:.2f}ms)")
                         retarget_times = []
-                    else:
-                        logger.info(f"FPS: {fps:.1f} | Frame: {frame_count} | No retargeting data")
                     
                     fps_counter = []
                     fps_start_time = time.time()

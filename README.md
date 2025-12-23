@@ -25,3 +25,10 @@ python udp/realtime_manus_retargeting_dexorigin.py \
   --retargeting-type dexpilot \
   --hand-type right
 ```
+
+
+```bash
+python udp/realtime_manus_retargeting_gaia16.py  \
+  --retargeting-type dexpilot \
+  --hand-type right
+```
