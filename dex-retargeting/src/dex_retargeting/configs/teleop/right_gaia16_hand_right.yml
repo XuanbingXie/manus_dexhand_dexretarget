@@ -1,0 +1,14 @@
+retargeting:
+  type: vector
+  urdf_path: right_gaia16_hand/right_gaia16 urdf.urdf
+
+  target_origin_link_names: ["right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link","right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link"]
+  target_task_link_names: ["right_thumb_tip", "right_index_tip", "right_middle_tip", "right_ring_tip", "right_little_tip","right_thumb_link_3","right_index_link_3","right_middle_link_3", "right_ring_link_3", "right_little_link_3"]
+  scaling_factor: 1.28
+
+  target_link_human_indices: [[ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], [ 4, 8, 12, 16, 20, 2, 6, 10, 14, 18 ]]
+
+  normal_delta: 0.005
+  huber_delta: 0.02
+
+  low_pass_alpha: 0.2

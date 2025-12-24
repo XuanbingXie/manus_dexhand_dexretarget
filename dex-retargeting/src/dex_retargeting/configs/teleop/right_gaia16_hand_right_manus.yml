@@ -1,0 +1,23 @@
+retargeting:
+  type: vector
+  urdf_path: right_gaia16_hand/right_gaia16 urdf.urdf
+
+  target_origin_link_names: ["right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link",
+                              "right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link"]
+  target_task_link_names: ["right_thumb_tip", "right_index_tip", "right_middle_tip", "right_ring_tip", "right_little_tip",
+                           "right_thumb_link_3", "right_index_link_3", "right_middle_link_3", "right_ring_link_3", "right_little_link_3"]
+  scaling_factor: 1.2
+
+  # 0: 手腕
+  # 拇指: 1-4 (CMC, MCP, IP, Tip)
+  # 食指: 5-9 (Metacarpal, Proximal, Intermediate, Distal, Tip)
+  # 中指: 10-14
+  # 无名指: 15-19
+  # 小指: 20-24
+  target_link_human_indices: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+                               [4, 9, 14, 19, 24, 3, 8, 13, 18, 23]]
+
+  normal_delta: 0.005
+  huber_delta: 0.02
+
+  low_pass_alpha: 0.2

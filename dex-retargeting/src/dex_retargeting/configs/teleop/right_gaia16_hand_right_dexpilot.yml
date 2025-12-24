@@ -1,0 +1,9 @@
+retargeting:
+  type: DexPilot
+  urdf_path: right_gaia16_hand/right_gaia16 urdf.urdf
+
+  wrist_link_name: "right_base_link"
+  finger_tip_link_names: ["right_thumb_tip", "right_index_tip", "right_middle_tip", "right_ring_tip", "right_little_tip"]
+  scaling_factor: 1.25
+
+  low_pass_alpha: 0.2

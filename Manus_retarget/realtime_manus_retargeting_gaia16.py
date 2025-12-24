@@ -8,6 +8,7 @@ import mujoco
 import mujoco.viewer
 import tyro
 from loguru import logger
+from scipy.spatial.transform import Rotation as R
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dex-retargeting" / "src"))
 
@@ -114,6 +115,9 @@ def main(
     fps_start_time = time.time()
     retarget_times = []
     
+    # 存储初始手腕旋转，用于补偿
+    initial_wrist_rot = None
+    
     with mujoco.viewer.launch_passive(model, data) as viewer:
         while viewer.is_running():
             frame_count += 1
@@ -123,19 +127,32 @@ def main(
                     data_raw, addr = manus_receiver.sock.recvfrom(4096)
                     nodes = manus_receiver.parser.parse_udp_data(data_raw)
                     if len(nodes) >= 25:
+                        # 获取手腕旋转
+                        wrist_quat = nodes[0]['rotation']  # [x, y, z, w]
+                        current_wrist_rot = R.from_quat(wrist_quat)
+                        
+                        # 第一帧：存储初始手腕旋转
+                        if initial_wrist_rot is None:
+                            initial_wrist_rot = current_wrist_rot
+                            logger.info("初始手腕旋转已捕获")
+                        
+                        # 提取位置
                         joint_pos = np.zeros((25, 3), dtype=np.float32)
                         for i, node in enumerate(nodes[:25]):
                             joint_pos[i] = node['position']
                     else:
                         joint_pos = None
+                        current_wrist_rot = None
                 except socket.timeout:
                     joint_pos = None
+                    current_wrist_rot = None
                 except Exception as e:
                     logger.error(f"Error parsing Manus data: {e}")
                     joint_pos = None
+                    current_wrist_rot = None
             else:
-                # 使用 MediaPipe 21 节点格式
                 joint_pos = manus_receiver.receive()
+                current_wrist_rot = None
             
             if joint_pos is not None:
                 last_data_time = time.time()
@@ -150,6 +167,11 @@ def main(
                         origin_indices = indices[0, :]
                         task_indices = indices[1, :]
                         ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
+                        
+                        # 手腕旋转补偿：将向量转换到初始手腕坐标系
+                        if use_manus_direct and current_wrist_rot is not None and initial_wrist_rot is not None:
+                            rot_compensation = initial_wrist_rot * current_wrist_rot.inv()
+                            ref_value = rot_compensation.apply(ref_value)
                     
                     start_time = time.perf_counter()
                     qpos = retargeting.retarget(ref_value)

@@ -32,6 +32,9 @@ python udp/realtime_manus_retargeting_gaia16.py  \
   --retargeting-type vector \
   --hand-type right
 ```
+```bash
+python udp/realtime_manus_retargeting_gaia16.py --use-manus-direct
+```
 
 dex-retageting复现：
 ```bash
