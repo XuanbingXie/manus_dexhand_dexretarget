@@ -55,7 +55,8 @@ def main(
     retargeting_type: RetargetingType = RetargetingType.vector,
     hand_type: HandType = HandType.right,
     udp_port: int = 5006,
-    use_manus_direct: bool = True,  
+    use_manus_direct: bool = True,
+    finger_scaling: tuple = (1.2, 1.2, 1.2, 1.2, 1.35),
 ):
     model_path = Path(__file__).parent.parent / "anytwist/model/robot/gaia_hand16_right.xml"
     if not model_path.exists():
@@ -107,6 +108,7 @@ def main(
     manus_receiver = ManusUDPReceiver(port=udp_port)
     
     logger.info(f"Waiting for Manus data on UDP port {udp_port}...")
+    scaling_vector = np.array(list(finger_scaling) + list(finger_scaling), dtype=np.float32)
     
     frame_count = 0
     last_data_time = time.time()
@@ -150,6 +152,8 @@ def main(
                         origin_indices = indices[0, :]
                         task_indices = indices[1, :]
                         ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
+
+                        ref_value = ref_value * scaling_vector[:, np.newaxis]
                     
                     start_time = time.perf_counter()
                     qpos = retargeting.retarget(ref_value)
