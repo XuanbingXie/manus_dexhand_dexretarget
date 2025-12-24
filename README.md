@@ -29,6 +29,23 @@ python udp/realtime_manus_retargeting_dexorigin.py \
 
 ```bash
 python udp/realtime_manus_retargeting_gaia16.py  \
-  --retargeting-type dexpilot \
+  --retargeting-type vector \
   --hand-type right
+```
+
+dex-retageting复现：
+```bash
+cd dex-retargeting/example/vector_retargeting
+python3 detect_from_video.py \
+  --robot-name gaia16 \
+  --video-path data/human_hand_video.mp4 \
+  --retargeting-type vector \
+  --hand-type right \
+  --output-path data/gaia16_joints.pkl
+```
+```bash
+python3 render_robot_hand.py \
+  --pickle-path data/gaia16_joints.pkl \
+  --output-video-path data/gaia16.mp4 \
+  --headless
 ```

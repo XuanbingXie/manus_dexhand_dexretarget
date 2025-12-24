@@ -7,18 +7,8 @@ retargeting:
   target_origin_link_names: ["palm", "palm", "palm", "palm", "palm", "palm", "palm", "palm", "palm", "palm"]
   target_task_link_names: ["thtip", "fftip", "mftip", "rftip", "lftip", "thmiddle", "ffmiddle", "mfmiddle", "rfmiddle", "lfmiddle"]
   
-  # Manus 手套的尺寸缩放因子
-  # 需要根据实际测量调整：Shadow Hand 长度 / Manus 手套长度
-  # 默认 1.2 表示 Shadow Hand 比 Manus 手套大 20%
   scaling_factor: 1.2
 
-  # Source refers to the retargeting input, which usually corresponds to the human hand
-  # MediaPipe 关键点索引映射
-  # 第一行：origin link 对应的人手关键点索引 (都是手腕 0)
-  # 第二行：task link 对应的人手关键点索引
-  # [拇指尖4, 食指尖8, 中指尖12, 无名指尖16, 小指尖20, 拇指中2, 食指中6, 中指中10, 无名指中14, 小指中18]
   target_link_human_indices: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [4, 8, 12, 16, 20, 2, 6, 10, 14, 18]]
 
-  # A smaller alpha means stronger filtering, i.e. more smooth but also larger latency
-  # 0.3 是一个平衡值：足够平滑但延迟不大
   low_pass_alpha: 0.3

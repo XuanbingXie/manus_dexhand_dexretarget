@@ -29,7 +29,6 @@ class ManusUDPReceiver:
         self.sock.bind(("", self.port))
         self.sock.settimeout(0.01)
         self.parser = ManusSkeletonParser()
-        logger.info(f"UDP receiver initialized on port {self.port}")
     
     def receive(self):
         try:
@@ -71,13 +70,24 @@ def main(
         return
     
     hand_type_str = "right" if hand_type == HandType.right else "left"
-    config_path = Path(__file__).parent.parent / f"configs/manus_gaia16_{hand_type_str}.yml"
+    retargeting_type_str = "dexpilot" if retargeting_type == RetargetingType.dexpilot else "vector"
+    
+    config_dir = Path(__file__).parent.parent / "dex-retargeting/src/dex_retargeting/configs/teleop"
+    if retargeting_type == RetargetingType.dexpilot:
+        config_path = config_dir / f"right_gaia16_hand_{hand_type_str}_dexpilot.yml"
+    else:
+        config_path = config_dir / f"right_gaia16_hand_{hand_type_str}.yml"
     
     if not config_path.exists():
         logger.error(f"Config file not found: {config_path}")
+        logger.info(f"Available configs in {config_dir}:")
+        if config_dir.exists():
+            for f in config_dir.glob("*gaia16*.yml"):
+                logger.info(f"  - {f.name}")
         return
     
-    RetargetingConfig.set_default_urdf_dir(str(Path(__file__).parent.parent))
+    urdf_dir = Path(__file__).parent.parent / "dex-retargeting/assets/dex-urdf/robots/hands"
+    RetargetingConfig.set_default_urdf_dir(str(urdf_dir))
     logger.info(f"Loading retargeting config from {config_path}")
     
     try:
@@ -90,7 +100,6 @@ def main(
     
     manus_receiver = ManusUDPReceiver(port=udp_port)
     
-    logger.info("Starting real-time retargeting loop")
     logger.info(f"Waiting for Manus data on UDP port {udp_port}...")
     
     frame_count = 0
