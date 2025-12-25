@@ -99,9 +99,6 @@ class ManusSkeletonParser:
         keypoints[0] = np.array([0.0, 0.0, 0.0], dtype=np.float32)  
         
         for manus_idx, mediapipe_idx in self.manus_to_mediapipe.items():
-            if manus_idx == 0:
-                continue
-                
             if manus_idx < len(nodes):
                 keypoints[mediapipe_idx] = nodes[manus_idx]['position']
         
