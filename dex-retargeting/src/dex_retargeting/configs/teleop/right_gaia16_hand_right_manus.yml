@@ -15,9 +15,9 @@ retargeting:
   # 无名指: 15-19
   # 小指: 20-24
   target_link_human_indices: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
-                               [4, 9, 14, 19, 24, 3, 8, 13, 18, 23]]
+                               [4, 9, 14, 19, 24, 2, 8, 13, 18, 23]]
 
   normal_delta: 0.005
   huber_delta: 0.02
 
-  low_pass_alpha: 0.2
+  low_pass_alpha: 0.3

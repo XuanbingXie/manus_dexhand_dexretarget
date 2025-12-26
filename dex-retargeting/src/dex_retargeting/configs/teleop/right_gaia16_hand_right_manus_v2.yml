@@ -1,0 +1,46 @@
+retargeting:
+  type: vector
+  urdf_path: right_gaia16_hand/right_gaia16 urdf.urdf
+
+  # 增加更多约束点，特别是大拇指的中间关节
+  target_origin_link_names: [
+    # 指尖向量 (从手腕到指尖)
+    "right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link",
+    # 第3节向量 (从手腕到第3节)
+    "right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link",
+    # 大拇指额外约束：从link_3到tip (约束远端弯曲)
+    "right_thumb_link_3",
+    # 第2节向量 (从手腕到第2节，增加中间约束)
+    "right_base_link", "right_base_link", "right_base_link", "right_base_link", "right_base_link"
+  ]
+  
+  target_task_link_names: [
+    # 指尖
+    "right_thumb_tip", "right_index_tip", "right_middle_tip", "right_ring_tip", "right_little_tip",
+    # 第3节
+    "right_thumb_link_3", "right_index_link_3", "right_middle_link_3", "right_ring_link_3", "right_little_link_3",
+    # 大拇指远端
+    "right_thumb_tip",
+    # 第2节
+    "right_thumb_link_2", "right_index_link_2", "right_middle_link_2", "right_ring_link_2", "right_little_link_2"
+  ]
+  
+  scaling_factor: 1.2
+
+  # Manus 25节点索引:
+  # 0: 手腕
+  # 拇指: 1(CMC), 2(MCP), 3(IP), 4(Tip)
+  # 食指: 5(Meta), 6(Prox), 7(Inter), 8(Dist), 9(Tip)
+  # 中指: 10-14
+  # 无名指: 15-19
+  # 小指: 20-24
+  target_link_human_indices: [
+    # origin indices
+    [0, 0, 0, 0, 0,  0, 0, 0, 0, 0,  3,  0, 0, 0, 0, 0],
+    # task indices  
+    [4, 9, 14, 19, 24,  3, 8, 13, 18, 23,  4,  2, 7, 12, 17, 22]
+  ]
+
+  normal_delta: 0.005
+  huber_delta: 0.02
+  low_pass_alpha: 0.25

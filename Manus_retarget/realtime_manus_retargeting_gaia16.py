@@ -34,7 +34,8 @@ class ManusUDPReceiver:
 def main(
     hand_type: HandType = HandType.right,
     udp_port: int = 5006,
-    finger_scaling: tuple = (3.0, 1.2, 1.2, 1.2, 1.5),
+    finger_scaling: tuple = (1.0, 1.2, 1.2, 1.2, 1.5),
+    use_v2_config: bool = False,
 ):
     """Manus到Gaia手实时Retargeting"""
     model_path = Path(__file__).parent.parent / "anytwist/model/robot/gaia_hand16_right.xml"
@@ -47,7 +48,12 @@ def main(
 
     hand_type_str = "right" if hand_type == HandType.right else "left"
     config_dir = Path(__file__).parent.parent / "dex-retargeting/src/dex_retargeting/configs/teleop"
-    config_path = config_dir / f"right_gaia16_hand_{hand_type_str}_manus.yml"
+    
+    if use_v2_config:
+        config_path = config_dir / f"right_gaia16_hand_{hand_type_str}_manus_v2.yml"
+        logger.info("Using v2 config with more constraints")
+    else:
+        config_path = config_dir / f"right_gaia16_hand_{hand_type_str}_manus.yml"
 
     urdf_dir = Path(__file__).parent.parent / "dex-retargeting/assets/dex-urdf/robots/hands"
     RetargetingConfig.set_default_urdf_dir(str(urdf_dir))
@@ -57,9 +63,18 @@ def main(
     logger.info("Retargeting initialized")
 
     manus_receiver = ManusUDPReceiver(port=udp_port)
-    scaling_vector = np.array(list(finger_scaling) * 2, dtype=np.float32)
 
-    # 固定参考旋转：将Manus坐标系映射到机器人坐标系
+    if use_v2_config:
+        scaling_vector = np.array([
+            finger_scaling[0], finger_scaling[1], finger_scaling[2], finger_scaling[3], finger_scaling[4],  # tips
+            finger_scaling[0], finger_scaling[1], finger_scaling[2], finger_scaling[3], finger_scaling[4],  # link3
+            finger_scaling[0],  # thumb远端
+            finger_scaling[0], finger_scaling[1], finger_scaling[2], finger_scaling[3], finger_scaling[4],  # link2
+        ], dtype=np.float32)
+    else:
+        # v1配置: 10个约束 [5个指尖, 5个link3]
+        scaling_vector = np.array(list(finger_scaling) + list(finger_scaling), dtype=np.float32)
+
     ref_rot_fixed = R.from_euler('y', -90, degrees=True)
 
     frame_count = 0
@@ -97,7 +112,6 @@ def main(
                     task_indices = indices[1, :]
                     ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
                     ref_value = ref_value * scaling_vector[:, np.newaxis]
-
                     qpos = retargeting.retarget(ref_value)
 
                     for i, joint_name in enumerate(retargeting.joint_names):
