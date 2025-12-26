@@ -1,0 +1,33 @@
+retargeting:
+  type: vector
+  urdf_path: l10_right/linkerhand_l10_right.urdf
+
+  # 独立控制的关节（非mimic关节）
+  target_joint_names: [
+    "thumb_cmc_roll", "thumb_cmc_yaw", "thumb_cmc_pitch",
+    "index_mcp_roll", "index_mcp_pitch",
+    "middle_mcp_pitch",
+    "ring_mcp_roll", "ring_mcp_pitch",
+    "pinky_mcp_roll", "pinky_mcp_pitch"
+  ]
+
+  target_origin_link_names: ["hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link",
+                              "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link"]
+  target_task_link_names: ["thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip",
+                           "thumb_proximal", "index_proximal", "middle_proximal", "ring_proximal", "pinky_proximal"]
+  scaling_factor: 1.2
+
+  # Manus手套关节索引:
+  # 0: 手腕
+  # 拇指: 1-4 (CMC, MCP, IP, Tip)
+  # 食指: 5-9 (Metacarpal, Proximal, Intermediate, Distal, Tip)
+  # 中指: 10-14
+  # 无名指: 15-19
+  # 小指: 20-24
+  target_link_human_indices: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 
+                               [4, 9, 14, 19, 24, 2, 8, 13, 18, 23]]
+
+  normal_delta: 0.005
+  huber_delta: 0.02
+
+  low_pass_alpha: 0.3
