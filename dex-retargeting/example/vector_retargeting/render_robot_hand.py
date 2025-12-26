@@ -98,8 +98,11 @@ def render_by_sapien(
         loader.scale = 1.5
     elif "gaia16" in robot_name:
         loader.scale = 1.3
+    elif "linker" in robot_name:
+        loader.scale = 1.2
 
-    if "glb" not in robot_name:
+    # linker hand 没有 glb 版本，直接使用原始 URDF
+    if "glb" not in robot_name and "linker" not in robot_name:
         filepath = str(filepath).replace(".urdf", "_glb.urdf")
     else:
         filepath = str(filepath)
@@ -123,6 +126,8 @@ def render_by_sapien(
         robot.set_pose(sapien.Pose([0, 0, -0.15]))
     elif "gaia16" in robot_name:
         robot.set_pose(sapien.Pose([0, 0, -0.15]))
+    elif "linker" in robot_name:
+        robot.set_pose(sapien.Pose([0, 0, -0.1]))
 
     # Video recorder
     if record_video:

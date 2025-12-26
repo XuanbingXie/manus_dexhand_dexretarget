@@ -1,9 +1,11 @@
 retargeting:
-  type: vector
+  type: DexPilot
   urdf_path: l10_right/linkerhand_l10_right.urdf
-
+  
+  # 忽略URDF中的mimic约束
   ignore_mimic_joint: true
-
+  
+  # 明确指定所有关节（包括mimic joints）
   target_joint_names: [
     "thumb_cmc_roll", "thumb_cmc_yaw", "thumb_cmc_pitch", "thumb_mcp", "thumb_ip",
     "index_mcp_roll", "index_mcp_pitch", "index_pip", "index_dip",
@@ -12,20 +14,16 @@ retargeting:
     "pinky_mcp_roll", "pinky_mcp_pitch", "pinky_pip", "pinky_dip"
   ]
 
-  target_origin_link_names: [
-    "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link"
-  ]
-  target_task_link_names: [
-    "thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"
-  ]
+  # 手腕链接
+  wrist_link_name: "hand_base_link"
+  
+  # 5个手指尖
+  finger_tip_link_names: ["thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"]
+  
   scaling_factor: 1.4
 
-  target_link_human_indices: [
-    [0, 0, 0, 0, 0],
-    [4, 9, 14, 19, 24]
-  ]
-
-  normal_delta: 0.005
-  huber_delta: 0.02
+  # DexPilot 优化器参数
+  project_dist: 0.03
+  escape_dist: 0.05
 
   low_pass_alpha: 0.3

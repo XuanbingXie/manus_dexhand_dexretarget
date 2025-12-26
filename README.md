@@ -52,3 +52,20 @@ python3 render_robot_hand.py \
   --output-video-path data/gaia16.mp4 \
   --headless
 ```
+dex-retageting复现：
+```bash
+cd dex-retargeting/example/vector_retargeting
+python3 detect_from_video.py \
+  --robot-name linker \
+  --video-path data/human_hand_video.mp4 \
+  --retargeting-type dexpilot \
+  --hand-type right \
+  --output-path data/linker_joints.pkl
+```
+
+```bash
+python3 render_robot_hand.py \
+  --pickle-path data/linker_joints.pkl \
+  --output-video-path data/linker.mp4 \
+  --headless
+```

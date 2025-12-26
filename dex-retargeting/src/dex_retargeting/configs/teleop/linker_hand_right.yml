@@ -1,9 +1,11 @@
 retargeting:
   type: vector
   urdf_path: l10_right/linkerhand_l10_right.urdf
-
+  
+  # 忽略URDF中的mimic约束
   ignore_mimic_joint: true
 
+  # 包含所有20个关节（独立 + mimic）
   target_joint_names: [
     "thumb_cmc_roll", "thumb_cmc_yaw", "thumb_cmc_pitch", "thumb_mcp", "thumb_ip",
     "index_mcp_roll", "index_mcp_pitch", "index_pip", "index_dip",
@@ -12,17 +14,16 @@ retargeting:
     "pinky_mcp_roll", "pinky_mcp_pitch", "pinky_pip", "pinky_dip"
   ]
 
-  target_origin_link_names: [
-    "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link"
-  ]
-  target_task_link_names: [
-    "thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"
-  ]
-  scaling_factor: 1.4
+  # 只使用5个手指尖作为约束
+  target_origin_link_names: ["hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link", "hand_base_link"]
+  target_task_link_names: ["thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"]
+  scaling_factor: 1.2
 
+  # MediaPipe手部关节索引：5个手指尖
+  # 拇指: 4, 食指: 8, 中指: 12, 无名指: 16, 小指: 20
   target_link_human_indices: [
     [0, 0, 0, 0, 0],
-    [4, 9, 14, 19, 24]
+    [4, 8, 12, 16, 20]
   ]
 
   normal_delta: 0.005

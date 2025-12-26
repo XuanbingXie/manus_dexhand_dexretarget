@@ -34,9 +34,18 @@ class ManusUDPReceiver:
 def main(
     hand_type: HandType = HandType.right,
     udp_port: int = 5006,
-    finger_scaling: tuple = (1.0, 1.2, 1.2, 1.2, 1.5),
+    finger_scaling: tuple = (1.3, 0.9, 0.9, 1.0, 1.0),  # 参考真机的缩放系数
+    use_dexpilot: bool = False,
 ):
-    """Manus到Gaia手实时Retargeting"""
+    """Manus到Gaia手实时Retargeting
+    
+    Args:
+        hand_type: 左手或右手
+        udp_port: UDP端口
+        finger_scaling: 5个手指的缩放因子 (thumb, index, middle, ring, pinky)
+        finger_offset: 5个手指的偏移量 (thumb, index, middle, ring, pinky)
+        use_dexpilot: 是否使用DexPilot模式（更简单但可能精度略低）
+    """
     model_path = Path(__file__).parent.parent / "anytwist/model/robot/l10_right.xml"
     if not model_path.exists():
         logger.error(f"MuJoCo model not found: {model_path}")
@@ -47,7 +56,13 @@ def main(
 
     hand_type_str = "right" if hand_type == HandType.right else "left"
     config_dir = Path(__file__).parent.parent / "dex-retargeting/src/dex_retargeting/configs/teleop"
-    config_path = config_dir / f"linker_hand_{hand_type_str}_manus.yml"
+    
+    if use_dexpilot:
+        config_path = config_dir / f"linker_hand_{hand_type_str}_dexpilot.yml"
+        logger.info("Using DexPilot mode")
+    else:
+        config_path = config_dir / f"linker_hand_{hand_type_str}_manus.yml"
+        logger.info("Using Vector mode")
 
     urdf_dir = Path(__file__).parent.parent / "dex-retargeting/assets/dex-urdf/robots/hands"
     RetargetingConfig.set_default_urdf_dir(str(urdf_dir))
@@ -57,7 +72,7 @@ def main(
     logger.info("Retargeting initialized")
 
     manus_receiver = ManusUDPReceiver(port=udp_port)
-    scaling_vector = np.array(list(finger_scaling) + list(finger_scaling), dtype=np.float32)
+    scaling_vector = np.array(list(finger_scaling), dtype=np.float32)
 
     ref_rot_fixed = R.from_euler('y', -90, degrees=True)
 
@@ -91,17 +106,73 @@ def main(
             if joint_pos is not None:
                 last_data_time = time.time()
                 try:
-                    indices = retargeting.optimizer.target_link_human_indices
-                    origin_indices = indices[0, :]
-                    task_indices = indices[1, :]
-                    ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
-                    ref_value = ref_value * scaling_vector[:, np.newaxis]
-                    qpos = retargeting.retarget(ref_value)
+                    if use_dexpilot:
+                        # DexPilot模式：需要提供所有手指对之间的向量
+                        # 对于5个手指，需要10个向量：手指间的连接(10个) + 手指到手腕的连接(5个) = 15个
+                        # 但实际上DexPilot只用前10个
+                        fingertip_indices = [4, 9, 14, 19, 24]  # thumb, index, middle, ring, pinky tips
+                        fingertip_pos = joint_pos[fingertip_indices, :]
+                        wrist_pos = joint_pos[0, :]  # 手腕位置
+                        
+                        # 生成所有手指对之间的向量 + 手指到手腕的向量
+                        ref_vectors = []
+                        # 手指之间的连接
+                        for i in range(len(fingertip_indices)):
+                            for j in range(i + 1, len(fingertip_indices)):
+                                ref_vectors.append(fingertip_pos[j] - fingertip_pos[i])
+                        # 手指到手腕的连接
+                        for i in range(len(fingertip_indices)):
+                            ref_vectors.append(fingertip_pos[i] - wrist_pos)
+                        
+                        ref_value = np.array(ref_vectors, dtype=np.float32)
+                        logger.debug(f"DexPilot ref_value shape: {ref_value.shape}")
+                        qpos = retargeting.retarget(ref_value)
+                    else:
+                        # Vector模式：使用向量差
+                        indices = retargeting.optimizer.target_link_human_indices
+                        origin_indices = indices[0, :]
+                        task_indices = indices[1, :]
+                        ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
+                        # 不使用 scaling_vector，让配置文件中的 scaling_factor 来处理
+                        qpos = retargeting.retarget(ref_value)
 
+                    # 设置独立关节
+                    independent_joints = [
+                        "thumb_cmc_roll", "thumb_cmc_yaw", "thumb_cmc_pitch",
+                        "index_mcp_roll", "index_mcp_pitch",
+                        "middle_mcp_pitch",
+                        "ring_mcp_roll", "ring_mcp_pitch",
+                        "pinky_mcp_roll", "pinky_mcp_pitch"
+                    ]
+                    
+                    logger.debug(f"retargeting.joint_names: {retargeting.joint_names}")
+                    logger.debug(f"qpos shape: {qpos.shape}")
+                    
+                    # 直接使用优化器输出的所有关节值，并应用每个手指的缩放
+                    # 定义每个关节对应的手指索引 (0=thumb, 1=index, 2=middle, 3=ring, 4=pinky)
+                    joint_to_finger = {
+                        "thumb_cmc_roll": 0, "thumb_cmc_yaw": 0, "thumb_cmc_pitch": 0, "thumb_mcp": 0, "thumb_ip": 0,
+                        "index_mcp_roll": 1, "index_mcp_pitch": 1, "index_pip": 1, "index_dip": 1,
+                        "middle_mcp_pitch": 2, "middle_pip": 2, "middle_dip": 2,
+                        "ring_mcp_roll": 3, "ring_mcp_pitch": 3, "ring_pip": 3, "ring_dip": 3,
+                        "pinky_mcp_roll": 4, "pinky_mcp_pitch": 4, "pinky_pip": 4, "pinky_dip": 4,
+                    }
+                    
                     for i, joint_name in enumerate(retargeting.joint_names):
                         joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
                         if joint_id >= 0:
-                            data.qpos[joint_id] = qpos[i]
+                            value = qpos[i]
+                            
+                            # 应用手指缩放
+                            if joint_name in joint_to_finger:
+                                finger_idx = joint_to_finger[joint_name]
+                                value = value * finger_scaling[finger_idx]
+                            
+                            # 食指分指方向需要取反
+                            if joint_name == "index_mcp_roll":
+                                value = -value
+                            
+                            data.qpos[joint_id] = value
 
                     fps_counter.append(time.time())
                 except Exception as e:
