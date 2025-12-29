@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-"""Manus手套到Gaia机械手的实时Retargeting"""
 import sys
 import time
 from pathlib import Path
-
 import numpy as np
 import mujoco
 import mujoco.viewer
@@ -12,10 +10,12 @@ from loguru import logger
 from scipy.spatial.transform import Rotation as R
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dex-retargeting" / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "Manus_retarget"))
 
-from dex_retargeting.constants import RetargetingType, HandType
+from dex_retargeting.constants import HandType
 from dex_retargeting.retargeting_config import RetargetingConfig
 from manus_skeleton_parser import ManusSkeletonParser
+from fingertip_ik import FingerIK
 import socket
 
 
@@ -34,21 +34,13 @@ class ManusUDPReceiver:
 def main(
     hand_type: HandType = HandType.right,
     udp_port: int = 5006,
-    finger_scaling: tuple = (1.3, 0.9, 0.9, 1.0, 1.0),  # 参考真机的缩放系数
+    thumb_position_scale: float = 1.0,
+    four_finger_scaling: tuple = (1.0, 0.9, 1.0, 1.0),
     use_dexpilot: bool = False,
 ):
-    """Manus到Gaia手实时Retargeting
-    
-    Args:
-        hand_type: 左手或右手
-        udp_port: UDP端口
-        finger_scaling: 5个手指的缩放因子 (thumb, index, middle, ring, pinky)
-        finger_offset: 5个手指的偏移量 (thumb, index, middle, ring, pinky)
-        use_dexpilot: 是否使用DexPilot模式（更简单但可能精度略低）
-    """
     model_path = Path(__file__).parent.parent / "anytwist/model/robot/l10_right.xml"
     if not model_path.exists():
-        logger.error(f"MuJoCo model not found: {model_path}")
+        logger.error(f"Model not found: {model_path}")
         return
 
     model = mujoco.MjModel.from_xml_path(str(model_path))
@@ -59,23 +51,26 @@ def main(
     
     if use_dexpilot:
         config_path = config_dir / f"linker_hand_{hand_type_str}_dexpilot.yml"
-        logger.info("Using DexPilot mode")
+        logger.info("Using DexPilot mode for four fingers")
     else:
         config_path = config_dir / f"linker_hand_{hand_type_str}_manus.yml"
-        logger.info("Using Vector mode")
+        logger.info("Using Vector mode for four fingers")
 
     urdf_dir = Path(__file__).parent.parent / "dex-retargeting/assets/dex-urdf/robots/hands"
     RetargetingConfig.set_default_urdf_dir(str(urdf_dir))
 
     config = RetargetingConfig.load_from_file(str(config_path))
     retargeting = config.build()
-    logger.info("Retargeting initialized")
+    logger.info("Retargeting initialized for four fingers")
+
+    ik_solver = FingerIK(str(model_path))
+    logger.info("IK solver initialized for thumb only")
 
     manus_receiver = ManusUDPReceiver(port=udp_port)
-    scaling_vector = np.array(list(finger_scaling), dtype=np.float32)
-
     ref_rot_fixed = R.from_euler('y', -90, degrees=True)
-
+    
+    last_thumb_qpos = np.array([0.3, 0.5, 0.2])
+    
     frame_count = 0
     last_data_time = time.time()
     fps_counter = []
@@ -105,12 +100,22 @@ def main(
 
             if joint_pos is not None:
                 last_data_time = time.time()
+                
                 try:
+                    thumb_target = joint_pos[4] * thumb_position_scale
+                    thumb_qpos, thumb_success = ik_solver.solve_ik("thumb", thumb_target, last_thumb_qpos)
+                    
+                    if thumb_success:
+                        last_thumb_qpos = thumb_qpos
+                        for joint_name, value in zip(ik_solver.finger_joints["thumb"], thumb_qpos):
+                            joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
+                            data.qpos[joint_id] = value
+                    
                     if use_dexpilot:
-                        fingertip_indices = [4, 9, 14, 19, 24]  # thumb, index, middle, ring, pinky tips
+                        fingertip_indices = [4, 9, 14, 19, 24]
                         fingertip_pos = joint_pos[fingertip_indices, :]
-                        wrist_pos = joint_pos[0, :]  # 手腕位置
-
+                        wrist_pos = joint_pos[0, :]
+                        
                         ref_vectors = []
                         for i in range(len(fingertip_indices)):
                             for j in range(i + 1, len(fingertip_indices)):
@@ -119,7 +124,6 @@ def main(
                             ref_vectors.append(fingertip_pos[i] - wrist_pos)
                         
                         ref_value = np.array(ref_vectors, dtype=np.float32)
-                        logger.debug(f"DexPilot ref_value shape: {ref_value.shape}")
                         qpos = retargeting.retarget(ref_value)
                     else:
                         indices = retargeting.optimizer.target_link_human_indices
@@ -127,51 +131,38 @@ def main(
                         task_indices = indices[1, :]
                         ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
                         qpos = retargeting.retarget(ref_value)
-
-                    # 设置独立关节
-                    independent_joints = [
-                        "thumb_cmc_roll", "thumb_cmc_yaw", "thumb_cmc_pitch",
-                        "index_mcp_roll", "index_mcp_pitch",
-                        "middle_mcp_pitch",
-                        "ring_mcp_roll", "ring_mcp_pitch",
-                        "pinky_mcp_roll", "pinky_mcp_pitch"
-                    ]
                     
-                    logger.debug(f"retargeting.joint_names: {retargeting.joint_names}")
-                    logger.debug(f"qpos shape: {qpos.shape}")
-                    
-                    # 直接使用优化器输出的所有关节值，并应用每个手指的缩放
-                    # 定义每个关节对应的手指索引 (0=thumb, 1=index, 2=middle, 3=ring, 4=pinky)
                     joint_to_finger = {
-                        "thumb_cmc_roll": 0, "thumb_cmc_yaw": 0, "thumb_cmc_pitch": 0, "thumb_mcp": 0, "thumb_ip": 0,
-                        "index_mcp_roll": 1, "index_mcp_pitch": 1, "index_pip": 1, "index_dip": 1,
-                        "middle_mcp_pitch": 2, "middle_pip": 2, "middle_dip": 2,
-                        "ring_mcp_roll": 3, "ring_mcp_pitch": 3, "ring_pip": 3, "ring_dip": 3,
-                        "pinky_mcp_roll": 4, "pinky_mcp_pitch": 4, "pinky_pip": 4, "pinky_dip": 4,
+                        "index_mcp_roll": 0, "index_mcp_pitch": 0, "index_pip": 0, "index_dip": 0,
+                        "middle_mcp_pitch": 1, "middle_pip": 1, "middle_dip": 1,
+                        "ring_mcp_roll": 2, "ring_mcp_pitch": 2, "ring_pip": 2, "ring_dip": 2,
+                        "pinky_mcp_roll": 3, "pinky_mcp_pitch": 3, "pinky_pip": 3, "pinky_dip": 3,
                     }
                     
                     for i, joint_name in enumerate(retargeting.joint_names):
+                        if joint_name.startswith("thumb"):
+                            continue
+                        
                         joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
                         if joint_id >= 0:
                             value = qpos[i]
                             
-                            # 应用手指缩放
                             if joint_name in joint_to_finger:
                                 finger_idx = joint_to_finger[joint_name]
-                                value = value * finger_scaling[finger_idx]
+                                value = value * four_finger_scaling[finger_idx]
                             
-                            # 食指分指方向需要取反
                             if joint_name == "index_mcp_roll":
                                 value = -value
                             
                             data.qpos[joint_id] = value
-
+                    
                     fps_counter.append(time.time())
+                    
                 except Exception as e:
                     logger.error(f"Retargeting failed: {e}")
             else:
                 if time.time() - last_data_time > 5.0:
-                    logger.warning("No data received for 5 seconds")
+                    logger.warning("No data")
                     last_data_time = time.time()
 
             mujoco.mj_forward(model, data)
@@ -180,7 +171,7 @@ def main(
             if time.time() - fps_start_time >= 1.0:
                 if fps_counter:
                     fps = len(fps_counter) / (time.time() - fps_start_time)
-                    logger.info(f"FPS: {fps:.1f} | Frame: {frame_count}")
+                    logger.info(f"FPS: {fps:.1f}")
                     fps_counter = []
                     fps_start_time = time.time()
 
