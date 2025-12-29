@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import time
+import json
 from pathlib import Path
 
 import numpy as np
@@ -61,7 +62,7 @@ def qpos_to_motor_positions(qpos, joint_names):
     
     cmd = np.round(ctrl_normalized * 255).astype(int)
     cmd = cmd[[2, 1, 4, 5, 7, 9, 3, 6, 8, 0]]
-    invert_mask = np.array([0, 255, 255, 255, 255, 255, 0, 0, 0, 0])
+    invert_mask = np.array([0, 255, 255, 255, 255, 255, 0, 0, 0, 255])
     cmd = np.abs(cmd - invert_mask)
     
     return cmd.tolist()
@@ -70,8 +71,8 @@ def qpos_to_motor_positions(qpos, joint_names):
 def main(
     hand_type: HandType = HandType.right,
     udp_port: int = 5006,
-    finger_scaling: tuple = (1.0, 1.0, 0.8, 1.0, 1.2),
-    finger_offset: tuple = (0.02, -0.01, -0.0, -0.0, -0.08),
+    finger_scaling: tuple = (1.0, 1.0, 0.8, 1.0, 1.0),
+    finger_offset: tuple = (0.0, -0.01, -0.0, -0.0, -0.00),
     use_dexpilot: bool = False,
     can_interface: str = "can0",
     hand_joint: str = "L10",
@@ -104,21 +105,16 @@ def main(
             )
             logger.info("Linker Hand initialized successfully")
             
-            # 设置最大速度和力矩以减少延迟
             linker_hand.set_speed(speed=[255, 255, 255, 255, 255])  
             linker_hand.set_torque(torque=[200, 200, 200, 200, 200])  
-            logger.info("Set motor speed to MAX (255) and torque to 200")
             
         except Exception as e:
             logger.error(f"Failed to initialize Linker Hand: {e}")
             return
     else:
-        logger.info("=" * 80)
-        logger.info("DRY RUN MODE: Will only print control data, not send to real hand")
         logger.info("To control real hand, use: --no-dry-run")
         logger.info("=" * 80)
 
-    # 初始化 retargeting
     hand_type_str = "right" if hand_type == HandType.right else "left"
     config_dir = Path(__file__).parent.parent / "dex-retargeting/src/dex_retargeting/configs/teleop"
     
@@ -150,7 +146,6 @@ def main(
     fps_start_time = time.time()
     last_print_time = time.time()
 
-    logger.info("Starting main loop...")
     
     try:
         while True:
@@ -238,14 +233,11 @@ def main(
                             filtered_positions[motor_idx] = motor_positions[motor_idx]
                         motor_positions = filtered_positions
                     
-                    if time.time() - last_print_time >= 5.0:  # 每5秒打印一次
-                        logger.info("=" * 80)
-                        logger.info(f"Frame: {frame_count}")
+                    if time.time() - last_print_time >= 10.0:  
                         if test_finger != "all":
                             logger.info(f"测试手指: {test_finger} (Motors: {finger_to_motors[test_finger]})")
                         
                         logger.info(f"Motor positions (0-255): {motor_positions}")
-                        logger.info("=" * 80)
                         last_print_time = time.time()
                     
                     if not dry_run and linker_hand is not None:
@@ -257,20 +249,15 @@ def main(
                     import traceback
                     traceback.print_exc()
             else:
-                if time.time() - last_data_time > 5.0:
-                    logger.warning("No data received for 5 seconds")
+                if time.time() - last_data_time > 10.0:
                     last_data_time = time.time()
 
-            # FPS统计
-            if time.time() - fps_start_time >= 5.0:
+            if time.time() - fps_start_time >= 10.0:
                 if fps_counter:
                     fps = len(fps_counter) / (time.time() - fps_start_time)
                     logger.info(f"Control FPS: {fps:.1f} Hz | Total frames: {frame_count}")
                     fps_counter = []
-                    fps_start_time = time.time()
-            
-            # 移除 sleep，让循环尽可能快
-            # time.sleep(0.001)  
+                    fps_start_time = time.time() 
 
     except KeyboardInterrupt:
         logger.info("Stopping...")

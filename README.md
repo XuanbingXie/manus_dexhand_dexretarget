@@ -69,3 +69,15 @@ python3 render_robot_hand.py \
   --output-video-path data/linker.mp4 \
   --headless
 ```
+
+test finger
+```bash
+python Manus_retarget/realtime_manus_retargeting_linker10_real.py \
+  --test-finger thumb \
+  --no-dry-run
+```
+test all 
+```bash
+python Manus_retarget/realtime_manus_retargeting_linker10_real.py \
+  --no-dry-run
+```
