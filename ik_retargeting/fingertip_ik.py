@@ -6,9 +6,10 @@ from pathlib import Path
 
 
 class FingerIK:
-    def __init__(self, model_path):
+    def __init__(self, model_path, low_pass_alpha=0.3):
         self.model = mujoco.MjModel.from_xml_path(str(model_path))
         self.data = mujoco.MjData(self.model)
+        self.low_pass_alpha = low_pass_alpha
         
         self.fingertip_sites = {
             "thumb": "thumb_distal",
@@ -35,6 +36,9 @@ class FingerIK:
                 self.joint_limits[finger].append((jnt_range[0], jnt_range[1]))
         
         self.collision_pairs = self._build_collision_pairs()
+        
+        # 存储上一帧的解，用于平滑
+        self.prev_solutions = {}
     
     def _build_collision_pairs(self):
         pairs = []
@@ -91,7 +95,7 @@ class FingerIK:
         result = minimize(
             objective,
             initial_guess,
-            method='SLSQP',
+            method='L-BFGS-B',
             bounds=bounds,
             options={'maxiter': 100, 'ftol': 1e-4}
         )

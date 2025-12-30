@@ -67,8 +67,8 @@ def qpos_to_motor_positions(qpos_dict, joint_names):
 def main(
     hand_type: HandType = HandType.right,
     udp_port: int = 5006,
-    thumb_position_scale: float = 0.9,
-    four_finger_scaling: tuple = (0.85, 0.8, 0.85, 1.2),
+    thumb_position_scale: float = 0.47,
+    four_finger_scaling: tuple = (0.7, 0.7, 0.85, 1.2),
     four_finger_offset: tuple = (-0.00, -0.0, -0.0, -0.00),
     use_dexpilot: bool = True,
     can_interface: str = "can0",
@@ -165,7 +165,6 @@ def main(
                         fingertip_indices = [4, 9, 14, 19, 24]
                         fingertip_pos = joint_pos[fingertip_indices, :]
                         wrist_pos = joint_pos[0, :]
-                        
                         ref_vectors = []
                         for i in range(len(fingertip_indices)):
                             for j in range(i + 1, len(fingertip_indices)):
@@ -192,8 +191,8 @@ def main(
                     qpos_dict = {}
                     
                     qpos_dict["thumb_cmc_roll"] = thumb_qpos[0]
-                    qpos_dict["thumb_cmc_yaw"] = thumb_qpos[1]
-                    qpos_dict["thumb_cmc_pitch"] = thumb_qpos[2]
+                    qpos_dict["thumb_cmc_yaw"] = thumb_qpos[1] * 3.2
+                    qpos_dict["thumb_cmc_pitch"] = thumb_qpos[2] * 0.8
                     
                     for i, joint_name in enumerate(retargeting.joint_names):
                         if joint_name.startswith("thumb"):
