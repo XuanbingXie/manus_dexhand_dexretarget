@@ -124,7 +124,6 @@ def main(
     last_thumb_qpos = np.array([0.3, 0.5, 0.2])
     
     frame_count = 0
-    last_data_time = time.time()
     fps_counter = []
     fps_start_time = time.time()
     last_print_time = time.time()

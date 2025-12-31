@@ -36,8 +36,6 @@ class FingerIK:
                 self.joint_limits[finger].append((jnt_range[0], jnt_range[1]))
         
         self.collision_pairs = self._build_collision_pairs()
-        
-        # 存储上一帧的解，用于平滑
         self.prev_solutions = {}
     
     def _build_collision_pairs(self):
