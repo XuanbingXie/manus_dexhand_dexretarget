@@ -52,7 +52,7 @@ def qpos_to_motor_positions(qpos_dict, joint_names):
         if joint_name in required_joints:
             ctrl_idx = required_joints.index(joint_name)
             ctrl[ctrl_idx] = qpos_dict.get(joint_name, 0.0)
-    
+
     bounds = np.array([1.1339, 1.9189, 0.5146, 0.2181, 1.3607, 1.3607, 0.2181, 1.3607, 0.2181, 1.3607])
     ctrl_normalized = np.clip(ctrl / bounds, 0, 1)
     cmd = np.round(ctrl_normalized * 255).astype(int)
@@ -69,7 +69,7 @@ def main(
     thumb_position_scale: float = 0.47,
     four_finger_scaling: tuple = (0.7, 0.7, 0.85, 1.2),
     four_finger_offset: tuple = (-0.00, -0.0, -0.0, -0.00),
-    use_dexpilot: bool = True,
+    use_dexpilot: bool = False,
     can_interface: str = "can0",
     hand_joint: str = "L10",
     dry_run: bool = True,
@@ -153,11 +153,44 @@ def main(
                 last_data_time = time.time()
                 
                 try:
-                    thumb_target = joint_pos[4] * thumb_position_scale
-                    thumb_qpos, thumb_success = ik_solver.solve_ik("thumb", thumb_target, last_thumb_qpos)
+                    thumb_tip_pos = joint_pos[4]
+                    thumb_cmc_pos = joint_pos[1]
+                    thumb_mcp_pos = joint_pos[2]
                     
-                    if thumb_success:
-                        last_thumb_qpos = thumb_qpos
+                    thumb_base_vec = thumb_mcp_pos - thumb_cmc_pos
+                    thumb_base_norm = np.linalg.norm(thumb_base_vec)
+                    
+                    if thumb_base_norm > 0.001:
+                        thumb_base_normalized = thumb_base_vec / thumb_base_norm
+                        y_component = thumb_base_normalized[1]
+                        estimated_roll = np.clip((y_component + 0.2) * 1.1, 0, 1.1339)
+                    else:
+                        estimated_roll = last_thumb_qpos[0]
+                    
+                    thumb_full_vec = thumb_tip_pos - thumb_cmc_pos
+                    thumb_full_norm = np.linalg.norm(thumb_full_vec)
+                    
+                    if thumb_full_norm > 0.001:
+                        thumb_full_normalized = thumb_full_vec / thumb_full_norm
+                        y_component_full = thumb_full_normalized[1]
+                        roll_from_tip = np.clip((y_component_full + 0.2) * 1.1, 0, 1.1339)
+                    else:
+                        roll_from_tip = estimated_roll
+                    
+                    final_roll_estimate = (estimated_roll * 0.7 + roll_from_tip * 0.3)
+                    
+                    initial_guess = last_thumb_qpos.copy()
+                    initial_guess[0] = final_roll_estimate
+                    
+                    thumb_qpos, thumb_success = ik_solver.solve_ik("thumb", thumb_tip_pos, initial_guess)
+                    
+                    thumb_qpos[0] = final_roll_estimate
+                    
+                    if thumb_qpos[1] < 0.01 and thumb_qpos[2] < 0.01 and (last_thumb_qpos[1] > 0.1 or last_thumb_qpos[2] > 0.1):
+                        thumb_qpos[1] = last_thumb_qpos[1]
+                        thumb_qpos[2] = last_thumb_qpos[2]
+                    
+                    last_thumb_qpos = thumb_qpos.copy()
                     
                     if use_dexpilot:
                         fingertip_indices = [4, 9, 14, 19, 24]
@@ -188,8 +221,8 @@ def main(
                     
                     qpos_dict = {}
                     
-                    qpos_dict["thumb_cmc_roll"] = thumb_qpos[0]
-                    qpos_dict["thumb_cmc_yaw"] = thumb_qpos[1] * 3.2
+                    qpos_dict["thumb_cmc_roll"] = thumb_qpos[0] * 0.8
+                    qpos_dict["thumb_cmc_yaw"] = thumb_qpos[1] * 1
                     qpos_dict["thumb_cmc_pitch"] = thumb_qpos[2] * 0.8
                     
                     for i, joint_name in enumerate(retargeting.joint_names):
@@ -214,6 +247,8 @@ def main(
                     motor_positions = qpos_to_motor_positions(qpos_dict, retargeting.joint_names)
                     
                     if time.time() - last_print_time >= 10.0:
+                        logger.info(f"Thumb qpos: roll={thumb_qpos[0]:.3f}, yaw={thumb_qpos[1]:.3f}, pitch={thumb_qpos[2]:.3f}")
+                        logger.info(f"Thumb qpos_dict: roll={qpos_dict['thumb_cmc_roll']:.3f}, yaw={qpos_dict['thumb_cmc_yaw']:.3f}, pitch={qpos_dict['thumb_cmc_pitch']:.3f}")
                         logger.info(f"Motor: {motor_positions}")
                         last_print_time = time.time()
                     
