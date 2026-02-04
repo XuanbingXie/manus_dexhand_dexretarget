@@ -286,17 +286,13 @@ def main(
                     # 转换为电机位置
                     motor_positions = qpos_to_o6_motor_positions(qpos_dict)
                     
-                    # 定期打印调试信息
-                    if time.time() - last_print_time >= 2.0:
-                        logger.info("=" * 60)
-                        logger.info("Joint angles (rad):")
-                        for joint_name in qpos_dict.keys():
-                            logger.info(f"  {joint_name}: {qpos_dict[joint_name]:.3f}")
-                        logger.info(f"Motor positions (0-255): {motor_positions}")
-                        logger.info(f"  [0]thumb_yaw: {motor_positions[0]}, [1]thumb_pitch: {motor_positions[1]}")
-                        logger.info(f"  [2]index: {motor_positions[2]}, [3]middle: {motor_positions[3]}")
-                        logger.info(f"  [4]ring: {motor_positions[4]}, [5]pinky: {motor_positions[5]}")
-                        logger.info("=" * 60)
+                    # 简化打印：只显示6个主动关节
+                    if time.time() - last_print_time >= 3.0:
+                        logger.info("Joints(rad): thumb_y={:.2f} thumb_p={:.2f} | idx={:.2f} mid={:.2f} ring={:.2f} pinky={:.2f}".format(
+                            qpos_dict.get('thumb_cmc_yaw', 0), qpos_dict.get('thumb_cmc_pitch', 0),
+                            qpos_dict.get('index_mcp_pitch', 0), qpos_dict.get('middle_mcp_pitch', 0),
+                            qpos_dict.get('ring_mcp_pitch', 0), qpos_dict.get('pinky_mcp_pitch', 0)))
+                        logger.info(f"Motors: {motor_positions}")
                         last_print_time = time.time()
                     
                     # 发送电机指令
