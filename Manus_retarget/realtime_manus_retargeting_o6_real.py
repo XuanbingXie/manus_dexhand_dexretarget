@@ -88,7 +88,7 @@ def qpos_to_o6_motor_positions(qpos_dict, debug=False):
     cmd = np.round(ctrl_normalized * 255).astype(int)
     
     # 根据实际电机方向调整（可能需要根据实际情况调整）
-    invert_mask = np.array([255, 0, 255, 255, 255, 0])
+    invert_mask = np.array([255, 255, 255, 255, 0, 0])
     cmd = np.abs(cmd - invert_mask)
     
     return cmd.tolist()
@@ -102,9 +102,9 @@ def main(
     hand_joint: str = "O6",
     dry_run: bool = False,
     scaling_factor: float = 1.0,
-    thumb_scale: float = 1.0,
-    index_scale: float = 1.0,
-    middle_scale: float = 2.0,
+    thumb_scale: float = 1.4,
+    index_scale: float = 2.0,
+    middle_scale: float = 3.0,
     ring_scale: float = 2.0,
     pinky_scale: float = 5.0,
 ):
@@ -178,14 +178,11 @@ def main(
     logger.info(f"O6 retargeting initialized with {len(active_joint_names)} active joints")
     logger.info(f"Active joint names: {active_joint_names}")
 
-    # 初始化 Manus UDP 接收器
     manus_receiver = ManusUDPReceiver(port=udp_port)
     logger.info(f"Listening for Manus data on UDP port {udp_port}")
     
-    # 参考旋转（用于坐标系转换）
     ref_rot_fixed = R.from_euler('y', -90, degrees=True)
-    
-    # 性能统计
+
     frame_count = 0
     fps_counter = []
     fps_start_time = time.time()
