@@ -104,9 +104,9 @@ def main(
     scaling_factor: float = 1.0,
     thumb_scale: float = 1.0,
     index_scale: float = 1.0,
-    middle_scale: float = 1.5,
+    middle_scale: float = 2.0,
     ring_scale: float = 2.0,
-    pinky_scale: float = 3.0,
+    pinky_scale: float = 5.0,
 ):
     """
     O6 手实时 Retargeting 主函数
