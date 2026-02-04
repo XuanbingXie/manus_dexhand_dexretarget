@@ -72,7 +72,6 @@ def qpos_to_o6_motor_positions(qpos_dict):
     for i, joint_name in enumerate(required_joints):
         ctrl[i] = qpos_dict.get(joint_name, 0.0)
     
-    # O6 关节限位（根据 URDF）
     bounds = np.array([
         1.3,    # thumb_cmc_yaw: 0 to 1.3
         0.58,   # thumb_cmc_pitch: 0 to 0.58
@@ -89,8 +88,8 @@ def qpos_to_o6_motor_positions(qpos_dict):
     cmd = np.round(ctrl_normalized * 255).astype(int)
     
     # 根据实际电机方向调整（可能需要根据实际情况调整）
-    # invert_mask = np.array([255, 255, 255, 255, 255, 255])
-    # cmd = np.abs(cmd - invert_mask)
+    invert_mask = np.array([255, 0, 255, 255, 255, 0])
+    cmd = np.abs(cmd - invert_mask)
     
     return cmd.tolist()
 
@@ -228,7 +227,6 @@ def main(
                         wrist_pos = joint_pos[0, :]
                         
                         ref_vectors = []
-                        # 指尖之间的向量
                         for i in range(len(fingertip_indices)):
                             for j in range(i + 1, len(fingertip_indices)):
                                 ref_vectors.append(fingertip_pos[j] - fingertip_pos[i])
