@@ -284,9 +284,12 @@ def main(
                     if time.time() - last_print_time >= 2.0:
                         logger.info("=" * 60)
                         logger.info("Joint angles (rad):")
-                        for joint_name in retargeting.joint_names:
+                        for joint_name in qpos_dict.keys():
                             logger.info(f"  {joint_name}: {qpos_dict[joint_name]:.3f}")
                         logger.info(f"Motor positions (0-255): {motor_positions}")
+                        logger.info(f"  [0]thumb_yaw: {motor_positions[0]}, [1]thumb_pitch: {motor_positions[1]}")
+                        logger.info(f"  [2]index: {motor_positions[2]}, [3]middle: {motor_positions[3]}")
+                        logger.info(f"  [4]ring: {motor_positions[4]}, [5]pinky: {motor_positions[5]}")
                         logger.info("=" * 60)
                         last_print_time = time.time()
                     
