@@ -103,7 +103,10 @@ def main(
     dry_run: bool = False,
     scaling_factor: float = 1.0,
     thumb_scale: float = 1.0,
-    finger_scale: float = 1.0,
+    index_scale: float = 1.0,
+    middle_scale: float = 1.5,
+    ring_scale: float = 2.0,
+    pinky_scale: float = 3.0,
 ):
     """
     O6 手实时 Retargeting 主函数
@@ -117,7 +120,10 @@ def main(
         dry_run: 测试模式，不发送实际指令
         scaling_factor: 整体缩放因子
         thumb_scale: 拇指缩放因子
-        finger_scale: 四指缩放因子
+        index_scale: 食指缩放因子
+        middle_scale: 中指缩放因子
+        ring_scale: 无名指缩放因子
+        pinky_scale: 小指缩放因子
     """
     # 初始化 Linker Hand API
     linker_hand = None
@@ -253,11 +259,17 @@ def main(
                     for i, joint_name in enumerate(retargeting.joint_names):
                         value = qpos[i]
                         
-                        # 应用特定缩放
+                        # 应用每个手指的独立缩放
                         if joint_name.startswith("thumb"):
                             value = value * thumb_scale
-                        else:
-                            value = value * finger_scale
+                        elif joint_name.startswith("index"):
+                            value = value * index_scale
+                        elif joint_name.startswith("middle"):
+                            value = value * middle_scale
+                        elif joint_name.startswith("ring"):
+                            value = value * ring_scale
+                        elif joint_name.startswith("pinky"):
+                            value = value * pinky_scale
                         
                         qpos_dict[joint_name] = value
                     
