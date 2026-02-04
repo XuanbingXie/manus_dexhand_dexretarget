@@ -1,0 +1,31 @@
+retargeting:
+  type: vector
+  urdf_path: l10_left/linkerhand_l10_left.urdf
+
+  ignore_mimic_joint: true
+
+  target_joint_names: [
+    "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3", "thumb_joint4",
+    "index_joint0", "index_joint1", "index_joint2", "index_joint3",
+    "middle_joint0", "middle_joint1", "middle_joint2",
+    "ring_joint0", "ring_joint1", "ring_joint2", "ring_joint3",
+    "little_joint0", "little_joint1", "little_joint2", "little_joint3"
+  ]
+
+  target_origin_link_names: [
+    "base_link", "base_link", "base_link", "base_link", "base_link"
+  ]
+  target_task_link_names: [
+    "thumb_link5", "index_link4", "middle_link3", "ring_link4", "little_link4"
+  ]
+  scaling_factor: 1.4
+
+  target_link_human_indices: [
+    [0, 0, 0, 0, 0],
+    [4, 9, 14, 19, 24]
+  ]
+
+  normal_delta: 0.005
+  huber_delta: 0.02
+
+  low_pass_alpha: 0.3

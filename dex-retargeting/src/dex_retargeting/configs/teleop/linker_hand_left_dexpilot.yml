@@ -1,0 +1,29 @@
+retargeting:
+  type: DexPilot
+  urdf_path: l10_left/linkerhand_l10_left.urdf
+  
+  # 忽略URDF中的mimic约束
+  ignore_mimic_joint: true
+  
+  # 明确指定所有关节（包括mimic joints）
+  target_joint_names: [
+    "thumb_joint0", "thumb_joint1", "thumb_joint2", "thumb_joint3", "thumb_joint4",
+    "index_joint0", "index_joint1", "index_joint2", "index_joint3",
+    "middle_joint0", "middle_joint1", "middle_joint2",
+    "ring_joint0", "ring_joint1", "ring_joint2", "ring_joint3",
+    "little_joint0", "little_joint1", "little_joint2", "little_joint3"
+  ]
+
+  # 手腕链接
+  wrist_link_name: "base_link"
+  
+  # 5个手指尖
+  finger_tip_link_names: ["thumb_link5", "index_link4", "middle_link3", "ring_link4", "little_link4"]
+  
+  scaling_factor: 1.4
+
+  # DexPilot 优化器参数
+  project_dist: 0.03
+  escape_dist: 0.05
+
+  low_pass_alpha: 0.3
