@@ -45,7 +45,7 @@ class ManusUDPReceiver:
         self.sock.close()
 
 
-def qpos_to_o6_motor_positions(qpos_dict):
+def qpos_to_o6_motor_positions(qpos_dict, debug=False):
     """
     将关节角度转换为 O6 电机位置
     
@@ -254,9 +254,13 @@ def main(
                     # 执行 retargeting
                     qpos = retargeting.retarget(ref_value)
                     
-                    # 构建关节角度字典
+                    # 构建关节角度字典 - 只使用主动关节，忽略 mimic 关节
                     qpos_dict = {}
                     for i, joint_name in enumerate(retargeting.joint_names):
+                        # 跳过 mimic 关节（dip, ip）
+                        if joint_name.endswith("_dip") or joint_name.endswith("_ip"):
+                            continue
+                            
                         value = qpos[i]
                         
                         # 应用每个手指的独立缩放
@@ -277,7 +281,7 @@ def main(
                     motor_positions = qpos_to_o6_motor_positions(qpos_dict)
                     
                     # 定期打印调试信息
-                    if time.time() - last_print_time >= 5.0:
+                    if time.time() - last_print_time >= 2.0:
                         logger.info("=" * 60)
                         logger.info("Joint angles (rad):")
                         for joint_name in retargeting.joint_names:
