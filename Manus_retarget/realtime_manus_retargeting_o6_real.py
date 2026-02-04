@@ -245,11 +245,17 @@ def main(
                         
                         ref_value = np.array(ref_vectors, dtype=np.float32)
                     else:
-                        # Vector: 使用手腕到指尖的向量
                         indices = retargeting.optimizer.target_link_human_indices
                         origin_indices = indices[0, :]  # 都是 0（手腕）
                         task_indices = indices[1, :]    # [4, 8, 12, 16, 20]（5 个指尖）
                         ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
+                        
+                        if frame_count % 60 == 0:  # 每60帧打印一次
+                            finger_names = ["thumb", "index", "middle", "ring", "pinky"]
+                            logger.debug("Finger tip vectors from wrist:")
+                            for i, name in enumerate(finger_names):
+                                vec_length = np.linalg.norm(ref_value[i])
+                                logger.debug(f"  {name}: length={vec_length:.3f}, vec={ref_value[i]}")
                     
                     # 应用整体缩放
                     ref_value = ref_value * scaling_factor
