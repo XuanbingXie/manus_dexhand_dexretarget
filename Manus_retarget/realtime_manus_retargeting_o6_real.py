@@ -172,8 +172,11 @@ def main(
     # 加载配置并创建 retargeting 对象
     config = RetargetingConfig.load_from_file(str(config_path))
     retargeting = config.build()
-    logger.info(f"O6 retargeting initialized with {len(retargeting.joint_names)} joints")
-    logger.info(f"Joint names: {retargeting.joint_names}")
+    
+    # 使用 dof_joint_names（只包含主动关节，不包括 mimic 关节）
+    active_joint_names = retargeting.optimizer.robot.dof_joint_names
+    logger.info(f"O6 retargeting initialized with {len(active_joint_names)} active joints")
+    logger.info(f"Active joint names: {active_joint_names}")
 
     # 初始化 Manus UDP 接收器
     manus_receiver = ManusUDPReceiver(port=udp_port)
@@ -254,13 +257,10 @@ def main(
                     # 执行 retargeting
                     qpos = retargeting.retarget(ref_value)
                     
-                    # 构建关节角度字典 - 只使用主动关节，忽略 mimic 关节
+                    # 使用 dof_joint_names 构建关节角度字典（只包含主动关节）
+                    active_joint_names = retargeting.optimizer.robot.dof_joint_names
                     qpos_dict = {}
-                    for i, joint_name in enumerate(retargeting.joint_names):
-                        # 跳过 mimic 关节（dip, ip）
-                        if joint_name.endswith("_dip") or joint_name.endswith("_ip"):
-                            continue
-                            
+                    for i, joint_name in enumerate(active_joint_names):
                         value = qpos[i]
                         
                         # 应用每个手指的独立缩放
