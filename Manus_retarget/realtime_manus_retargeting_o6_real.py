@@ -37,7 +37,7 @@ class ManusUDPReceiver:
     def __init__(self, port=5006):
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("", self.port))
+        self.sock.bind(("0.0.0.0", self.port))
         self.sock.settimeout(0.01)
         self.parser = ManusSkeletonParser()
 
@@ -99,7 +99,7 @@ def main(
     hand_type: HandType = HandType.left,
     udp_port: int = 5006,
     use_dexpilot: bool = False,
-    can_interface: str = "can0",
+    can_interface: str = "can1",
     hand_joint: str = "O6",
     dry_run: bool = False,
     scaling_factor: float = 1.0,
