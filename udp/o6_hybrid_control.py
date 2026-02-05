@@ -220,13 +220,29 @@ def main(
                     # 提取四指位置（索引 1-4）
                     four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
                     
+                    # 检查 wrist quaternion 是否有效
+                    if np.linalg.norm(wrist_quat) < 0.01:
+                        # 无效的四元数，跳过这一帧
+                        continue
+                    
                     wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
                     transform_rot = ref_rot_fixed * wrist_rot.inv()
                     transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
                     
                     ref_value = transformed_pos * scaling_factor
                     
-                    qpos = retargeting.retarget(ref_value)
+                    # 拇指关节的固定值（不优化，但需要提供给 optimizer）
+                    # 顺序：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip (但 thumb_ip 是 mimic，所以只需要前两个)
+                    # 实际上由于 ignore_mimic_joint=true，需要提供所有非目标关节的值
+                    # 关节顺序：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, index_mcp_pitch, middle_mcp_pitch, ring_mcp_pitch, pinky_mcp_pitch
+                    # 目标关节：index_mcp_pitch, middle_mcp_pitch, ring_mcp_pitch, pinky_mcp_pitch
+                    # 固定关节：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip
+                    thumb_yaw_rad = (thumb_yaw / 255.0) * 1.3  # 转换为弧度
+                    thumb_pitch_rad = (thumb_pitch / 255.0) * 0.58
+                    thumb_ip_rad = thumb_pitch_rad * 2.29  # mimic joint
+                    fixed_qpos = np.array([thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad])
+                    
+                    qpos = retargeting.retarget(ref_value, fixed_qpos=fixed_qpos)
                     
                     active_joint_names = retargeting.optimizer.robot.dof_joint_names
                     qpos_dict = {}
