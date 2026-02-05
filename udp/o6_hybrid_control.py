@@ -83,7 +83,6 @@ def create_four_finger_config(hand_type, scaling_factor):
   
   scaling_factor: {scaling_factor}
 
-  # 四个手指的索引（跳过拇指）
   target_link_human_indices: [
     [0, 0, 0, 0],
     [1, 2, 3, 4]
@@ -118,7 +117,6 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
         motor_val = int(normalized * 255)
         motors.append(motor_val)
     
-    # 反转方向（根据实际情况调整）
     motors[2] = 255 - motors[2]
     motors[3] = 255 - motors[3]
     
