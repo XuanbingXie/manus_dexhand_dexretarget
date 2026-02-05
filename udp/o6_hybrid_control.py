@@ -119,7 +119,7 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
         motors.append(motor_val)
     
     motors[2] = 255 - motors[2]
-    motors[3] = 255 - motors[3]
+    # motors[3] = 255 - motors[3]
     
     return motors
 
@@ -208,7 +208,6 @@ def main(
                 wrist_quat = msg['left_wrist'] if hand_type == "left" else msg['right_wrist']
                 
                 if sensors is not None and wrist_quat is not None:
-                    # === 拇指：简单映射 ===
                     thumb_pos = sensors[0, :3]
                     thumb_len = np.linalg.norm(thumb_pos)
                     thumb_yaw = int(np.clip((0.12 - thumb_len) / 0.03 * 255, 0, 255))
@@ -228,7 +227,6 @@ def main(
                     
                     ref_value = transformed_pos * scaling_factor
                     
-                    # 使用 ignore_mimic_joint=true，所以有 11 个独立关节
                     # 关节顺序（从 URDF）：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, 
                     #                      index_mcp_pitch, index_dip, 
                     #                      middle_mcp_pitch, middle_dip,
@@ -238,10 +236,9 @@ def main(
                     # 固定关节（7个）：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, index_dip, middle_dip, ring_dip, pinky_dip
                     thumb_yaw_rad = (thumb_yaw / 255.0) * 1.3  
                     thumb_pitch_rad = (thumb_pitch / 255.0) * 0.58
-                    thumb_ip_rad = thumb_pitch_rad * 2.29  # mimic 关系
-                    # DIP 关节先设为 0，后面会根据 MCP 优化结果更新
+                    thumb_ip_rad = thumb_pitch_rad * 2.29  
                     fixed_qpos = np.array([
-                        thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad,  # 拇指 3 个关节
+                        thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad,  
                         0.0, 0.0, 0.0, 0.0  # 四指的 DIP 关节（会被 mimic 关系覆盖）
                     ])
                     

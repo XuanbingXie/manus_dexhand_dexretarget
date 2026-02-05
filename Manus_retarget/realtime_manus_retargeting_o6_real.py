@@ -209,25 +209,19 @@ def main(
                     parent_pos = nodes[0]['position']
                     parent_rot = R.from_quat(parent_quat)
                     transform_rot = ref_rot_fixed * parent_rot.inv()
-
-                    # 转换所有关节位置到相对坐标系
                     for i, node in enumerate(nodes[:25]):
                         joint_pos[i] = transform_rot.apply(node['position'] - parent_pos)
                         
             except socket.timeout:
-                # 超时是正常的，继续循环
                 pass
             except Exception as e:
                 logger.error(f"Error receiving Manus data: {e}")
 
-            # 如果收到数据，进行 retargeting
             if joint_pos is not None:
                 last_data_time = time.time()
                 
                 try:
-                    # 根据 retargeting 类型准备输入数据
                     if use_dexpilot:
-                        # DexPilot: 使用指尖之间的向量
                         fingertip_indices = [4, 8, 12, 16, 20]  # 5 个指尖
                         fingertip_pos = joint_pos[fingertip_indices, :]
                         wrist_pos = joint_pos[0, :]
@@ -236,7 +230,6 @@ def main(
                         for i in range(len(fingertip_indices)):
                             for j in range(i + 1, len(fingertip_indices)):
                                 ref_vectors.append(fingertip_pos[j] - fingertip_pos[i])
-                        # 指尖到手腕的向量
                         for i in range(len(fingertip_indices)):
                             ref_vectors.append(fingertip_pos[i] - wrist_pos)
                         
