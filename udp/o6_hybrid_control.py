@@ -91,7 +91,6 @@ def create_four_finger_config(hand_type, scaling_factor):
   normal_delta: 0.005
   huber_delta: 0.02
   low_pass_alpha: 0.3
-  ignore_mimic_joint: true
 """
     return config_content
 
@@ -217,12 +216,9 @@ def main(
                     thumb_pitch = 255 - thumb_pitch
                     
                     # === 四指：vector retargeting ===
-                    # 提取四指位置（索引 1-4）
                     four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
                     
-                    # 检查 wrist quaternion 是否有效
                     if np.linalg.norm(wrist_quat) < 0.01:
-                        # 无效的四元数，跳过这一帧
                         continue
                     
                     wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
@@ -231,16 +227,13 @@ def main(
                     
                     ref_value = transformed_pos * scaling_factor
                     
-                    # 拇指关节的固定值（不优化，但需要提供给 optimizer）
-                    # 顺序：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip (但 thumb_ip 是 mimic，所以只需要前两个)
-                    # 实际上由于 ignore_mimic_joint=true，需要提供所有非目标关节的值
-                    # 关节顺序：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, index_mcp_pitch, middle_mcp_pitch, ring_mcp_pitch, pinky_mcp_pitch
+                    # O6 有 6 个主动关节（mimic joints 自动处理）
+                    # 关节顺序：thumb_cmc_yaw, thumb_cmc_pitch, index_mcp_pitch, middle_mcp_pitch, ring_mcp_pitch, pinky_mcp_pitch
                     # 目标关节：index_mcp_pitch, middle_mcp_pitch, ring_mcp_pitch, pinky_mcp_pitch
-                    # 固定关节：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip
-                    thumb_yaw_rad = (thumb_yaw / 255.0) * 1.3  # 转换为弧度
+                    # 固定关节：thumb_cmc_yaw, thumb_cmc_pitch
+                    thumb_yaw_rad = (thumb_yaw / 255.0) * 1.3  
                     thumb_pitch_rad = (thumb_pitch / 255.0) * 0.58
-                    thumb_ip_rad = thumb_pitch_rad * 2.29  # mimic joint
-                    fixed_qpos = np.array([thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad])
+                    fixed_qpos = np.array([thumb_yaw_rad, thumb_pitch_rad])
                     
                     qpos = retargeting.retarget(ref_value, fixed_qpos=fixed_qpos)
                     
@@ -257,14 +250,11 @@ def main(
                         value = qpos[i] * scales.get(joint_name, 1.0)
                         qpos_dict[joint_name] = value
                     
-                    # 组合电机指令
                     motors = qpos_to_o6_motors(thumb_yaw, thumb_pitch, qpos_dict)
                     
-                    # 发送指令
                     if not dry_run and linker_hand is not None:
                         linker_hand.finger_move(pose=motors)
                     
-                    # 定期打印
                     frame_count += 1
                     if time.time() - last_print >= 2.0:
                         print(f"Frame {frame_count} | Motors: {motors}")
