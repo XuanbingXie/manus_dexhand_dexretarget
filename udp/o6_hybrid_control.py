@@ -91,6 +91,7 @@ def create_four_finger_config(hand_type, scaling_factor):
   normal_delta: 0.005
   huber_delta: 0.02
   low_pass_alpha: 0.3
+  ignore_mimic_joint: true
 """
     return config_content
 
