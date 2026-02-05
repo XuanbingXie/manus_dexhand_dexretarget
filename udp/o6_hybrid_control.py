@@ -83,7 +83,6 @@ def create_four_finger_config(hand_type, scaling_factor):
   
   scaling_factor: {scaling_factor}
 
-  # 四个手指的索引（跳过拇指）
   target_link_human_indices: [
     [0, 0, 0, 0],
     [1, 2, 3, 4]
