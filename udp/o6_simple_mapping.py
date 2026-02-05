@@ -155,7 +155,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--hand", choices=["left", "right"], default="left")
-    parser.add_argument("--can", default="can0")
+    parser.add_argument("--can", default="can1")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     

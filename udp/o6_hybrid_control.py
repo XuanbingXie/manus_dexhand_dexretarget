@@ -24,7 +24,7 @@ except ImportError:
     print("Warning: LinkerHand SDK not available")
 
 
-UDP_ADDR = "127.0.0.1"
+UDP_ADDR = "0.0.0.0"
 UDP_PORT = 9000
 
 HEADER_FMT = "<III"
@@ -118,7 +118,6 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
         motor_val = int(normalized * 255)
         motors.append(motor_val)
     
-    # 反转方向（根据实际情况调整）
     motors[2] = 255 - motors[2]
     motors[3] = 255 - motors[3]
     
@@ -221,18 +220,14 @@ def main(
                     # 提取四指位置（索引 1-4）
                     four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
                     
-                    # 坐标系转换
                     wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
                     transform_rot = ref_rot_fixed * wrist_rot.inv()
                     transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
                     
-                    # 应用缩放
                     ref_value = transformed_pos * scaling_factor
                     
-                    # 执行 retargeting
                     qpos = retargeting.retarget(ref_value)
                     
-                    # 构建关节字典并应用独立缩放
                     active_joint_names = retargeting.optimizer.robot.dof_joint_names
                     qpos_dict = {}
                     scales = {
