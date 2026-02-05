@@ -20,7 +20,7 @@ except ImportError:
     print("Warning: LinkerHand SDK not available")
 
 
-UDP_ADDR = "127.0.0.1"
+UDP_ADDR = "0.0.0.0"
 UDP_PORT = 9000
 
 HEADER_FMT = "<III"
@@ -55,13 +55,6 @@ def parse_packet(data):
 
 
 def sensors_to_motors_simple(sensors):
-    """
-    简单映射：位置长度 → 弯曲角度 → 电机指令
-    
-    观察到的位置长度范围：0.09 - 0.12 米
-    - 长度大（~0.12）= 手指伸直
-    - 长度小（~0.09）= 手指弯曲
-    """
     motors = []
     
     # 拇指（两个电机）
@@ -91,7 +84,6 @@ def sensors_to_motors_simple(sensors):
 
 
 def main(hand_type="right", can_interface="can1", dry_run=False):
-    """主函数"""
     linker_hand = None
     if not dry_run:
         if not LINKER_AVAILABLE:
@@ -133,10 +125,8 @@ def main(hand_type="right", can_interface="can1", dry_run=False):
                 sensors = msg['left_sensors'] if hand_type == "left" else msg['right_sensors']
                 
                 if sensors is not None:
-                    # 简单映射
                     motors = sensors_to_motors_simple(sensors)
                     
-                    # 发送指令
                     if not dry_run and linker_hand is not None:
                         linker_hand.finger_move(pose=motors)
                     
