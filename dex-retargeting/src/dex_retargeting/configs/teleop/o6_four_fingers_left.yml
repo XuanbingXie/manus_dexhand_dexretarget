@@ -19,7 +19,6 @@ retargeting:
   
   scaling_factor: 1.0
 
-  # 四个手指的索引（跳过拇指）
   target_link_human_indices: [
     [0, 0, 0, 0],
     [1, 2, 3, 4]
@@ -28,3 +27,4 @@ retargeting:
   normal_delta: 0.005
   huber_delta: 0.02
   low_pass_alpha: 0.3
+  ignore_mimic_joint: true
