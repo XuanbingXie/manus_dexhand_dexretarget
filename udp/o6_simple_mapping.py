@@ -79,6 +79,7 @@ def sensors_to_motors_simple(sensors):
     motors[1] = 255 - motors[1]
     motors[2] = 255 - motors[2]
     motors[3] = 255 - motors[3]
+    motors[4] = 255 - motors[4]
     
     return motors
 
@@ -129,8 +130,6 @@ def main(hand_type="right", can_interface="can1", dry_run=False):
                     
                     if not dry_run and linker_hand is not None:
                         linker_hand.finger_move(pose=motors)
-                    
-                    # 定期打印
                     frame_count += 1
                     if time.time() - last_print >= 1.0:
                         lengths = [np.linalg.norm(sensors[i, :3]) for i in range(5)]
