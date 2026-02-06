@@ -208,7 +208,6 @@ def main(
                 wrist_quat = msg['left_wrist'] if hand_type == "left" else msg['right_wrist']
                 
                 if sensors is not None and wrist_quat is not None:
-                    # 检查 wrist quaternion 是否有效
                     if np.linalg.norm(wrist_quat) < 0.01:
                         continue
                     
@@ -228,25 +227,10 @@ def main(
                     four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
                     transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
                     
-                    # 打印调试信息
-                    if frame_count % 60 == 0:
-                        finger_names = ["index", "middle", "ring", "pinky"]
-                        print("\n=== 坐标转换调试 ===")
-                        print(f"手腕四元数: {wrist_quat}")
-                        for i, name in enumerate(finger_names):
-                            orig = four_finger_pos[i]
-                            trans = transformed_pos[i]
-                            length = np.linalg.norm(trans)
-                            print(f"{name:6s}: 原始={orig}, 转换后={trans}, 长度={length:.3f}")
-                    
-                    # 计算从手腕（原点）到指尖的向量
-                    # 根据 retargeting 配置的 target_link_human_indices 来构建
                     indices = retargeting.optimizer.target_link_human_indices
                     origin_indices = indices[0, :]  # 应该都是 0（手腕）
                     task_indices = indices[1, :]    # 四个指尖的索引
-                    
-                    # 构建完整的 joint_pos（包含手腕 + 四指）
-                    # 索引 0 = 手腕（原点），索引 1-4 = 四指指尖
+
                     joint_pos = np.zeros((5, 3), dtype=np.float32)
                     joint_pos[0, :] = [0, 0, 0]  # 手腕在原点
                     joint_pos[1:5, :] = transformed_pos  # 四指指尖
