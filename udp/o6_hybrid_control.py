@@ -208,6 +208,10 @@ def main(
                 wrist_quat = msg['left_wrist'] if hand_type == "left" else msg['right_wrist']
                 
                 if sensors is not None and wrist_quat is not None:
+                    # 检查 wrist quaternion 是否有效
+                    if np.linalg.norm(wrist_quat) < 0.01:
+                        continue
+                    
                     # === 拇指：简单映射 ===
                     thumb_pos = sensors[0, :3]
                     thumb_len = np.linalg.norm(thumb_pos)
@@ -217,14 +221,25 @@ def main(
                     thumb_pitch = 255 - thumb_pitch
                     
                     # === 四指：vector retargeting ===
-                    four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
-                    
-                    if np.linalg.norm(wrist_quat) < 0.01:
-                        continue
-                    
+                    # 正确的坐标转换：相对于手腕的坐标系
                     wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
                     transform_rot = ref_rot_fixed * wrist_rot.inv()
+                    
+                    # 提取四指位置（索引 1-4）并转换到相对坐标系
+                    # sensors 中的位置已经是相对于手腕的，但需要旋转到正确的坐标系
+                    four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
                     transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
+                    
+                    # 打印调试信息
+                    if frame_count % 60 == 0:
+                        finger_names = ["index", "middle", "ring", "pinky"]
+                        print("\n=== 坐标转换调试 ===")
+                        print(f"手腕四元数: {wrist_quat}")
+                        for i, name in enumerate(finger_names):
+                            orig = four_finger_pos[i]
+                            trans = transformed_pos[i]
+                            length = np.linalg.norm(trans)
+                            print(f"{name:6s}: 原始={orig}, 转换后={trans}, 长度={length:.3f}")
                     
                     ref_value = transformed_pos * scaling_factor
                     
@@ -239,10 +254,9 @@ def main(
                     thumb_yaw_rad = (thumb_yaw / 255.0) * 1.3  
                     thumb_pitch_rad = (thumb_pitch / 255.0) * 0.58
                     thumb_ip_rad = thumb_pitch_rad * 2.29  # mimic 关系
-                    # DIP 关节先设为 0，后面会根据 MCP 优化结果更新
                     fixed_qpos = np.array([
                         thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad,  # 拇指 3 个关节
-                        0.0, 0.0, 0.0, 0.0  # 四指的 DIP 关节（会被 mimic 关系覆盖）
+                        0.0, 0.0, 0.0, 0.0  
                     ])
                     
                     qpos = retargeting.retarget(ref_value, fixed_qpos=fixed_qpos)

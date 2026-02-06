@@ -108,24 +108,6 @@ def main(
     ring_scale: float = 2.0,
     pinky_scale: float = 5.0,
 ):
-    """
-    O6 手实时 Retargeting 主函数
-    
-    Args:
-        hand_type: 左手或右手
-        udp_port: Manus 手套 UDP 端口
-        use_dexpilot: 使用 DexPilot 还是 Vector retargeting
-        can_interface: CAN 接口名称
-        hand_joint: 手的型号（O6）
-        dry_run: 测试模式，不发送实际指令
-        scaling_factor: 整体缩放因子
-        thumb_scale: 拇指缩放因子
-        index_scale: 食指缩放因子
-        middle_scale: 中指缩放因子
-        ring_scale: 无名指缩放因子
-        pinky_scale: 小指缩放因子
-    """
-    # 初始化 Linker Hand API
     linker_hand = None
     if not dry_run:
         if not LINKER_AVAILABLE:
@@ -165,11 +147,9 @@ def main(
         logger.error(f"Config file not found: {config_path}")
         return
 
-    # 设置 URDF 目录
     urdf_dir = Path(__file__).parent.parent / "dex-retargeting/assets/dex-urdf/robots/hands"
     RetargetingConfig.set_default_urdf_dir(str(urdf_dir.absolute()))
 
-    # 加载配置并创建 retargeting 对象
     config = RetargetingConfig.load_from_file(str(config_path))
     retargeting = config.build()
     
@@ -196,7 +176,6 @@ def main(
             frame_count += 1
             joint_pos = None
 
-            # 接收 Manus 数据
             try:
                 data_raw, _ = manus_receiver.sock.recvfrom(4096)
                 nodes = manus_receiver.parser.parse_udp_data(data_raw)
@@ -215,17 +194,14 @@ def main(
                         joint_pos[i] = transform_rot.apply(node['position'] - parent_pos)
                         
             except socket.timeout:
-                # 超时是正常的，继续循环
                 pass
             except Exception as e:
                 logger.error(f"Error receiving Manus data: {e}")
 
-            # 如果收到数据，进行 retargeting
             if joint_pos is not None:
                 last_data_time = time.time()
                 
                 try:
-                    # 根据 retargeting 类型准备输入数据
                     if use_dexpilot:
                         # DexPilot: 使用指尖之间的向量
                         fingertip_indices = [4, 8, 12, 16, 20]  # 5 个指尖
