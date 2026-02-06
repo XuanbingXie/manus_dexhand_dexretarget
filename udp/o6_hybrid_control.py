@@ -119,7 +119,7 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
         motors.append(motor_val)
     
     motors[2] = 255 - motors[2]
-    motors[3] = 255 - motors[3]
+    # motors[3] = 255 - motors[3]
     
     return motors
 
@@ -243,7 +243,6 @@ def main(
                     
                     ref_value = transformed_pos * scaling_factor
                     
-                    # 使用 ignore_mimic_joint=true，所以有 11 个独立关节
                     # 关节顺序（从 URDF）：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, 
                     #                      index_mcp_pitch, index_dip, 
                     #                      middle_mcp_pitch, middle_dip,
