@@ -221,16 +221,12 @@ def main(
                     thumb_pitch = 255 - thumb_pitch
                     
                     # === 四指：vector retargeting ===
-                    # 坐标转换：世界坐标 -> 手腕局部坐标 -> 参考坐标系
+                    # 应用组合的旋转变换：ref_rot_fixed * wrist_rot.inv()
                     wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
+                    transform_rot = ref_rot_fixed * wrist_rot.inv()
                     
                     four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
-                    
-                    # 步骤1：转换到手腕局部坐标系（去除手腕旋转的影响）
-                    local_pos = np.array([wrist_rot.inv().apply(pos) for pos in four_finger_pos])
-                    
-                    # 步骤2：应用参考坐标系转换（Y轴-90度）
-                    transformed_pos = np.array([ref_rot_fixed.apply(pos) for pos in local_pos])
+                    transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
                     
                     # 打印调试信息
                     if frame_count % 60 == 0:
@@ -238,12 +234,24 @@ def main(
                         print("\n=== 坐标转换调试 ===")
                         print(f"手腕四元数: {wrist_quat}")
                         for i, name in enumerate(finger_names):
-                            world = four_finger_pos[i]
-                            local = local_pos[i]
-                            final = transformed_pos[i]
-                            print(f"{name:6s}: 世界={world}, 局部={local}, 最终={final}")
+                            orig = four_finger_pos[i]
+                            trans = transformed_pos[i]
+                            length = np.linalg.norm(trans)
+                            print(f"{name:6s}: 原始={orig}, 转换后={trans}, 长度={length:.3f}")
                     
-                    ref_value = transformed_pos * scaling_factor
+                    # 计算从手腕（原点）到指尖的向量
+                    # 根据 retargeting 配置的 target_link_human_indices 来构建
+                    indices = retargeting.optimizer.target_link_human_indices
+                    origin_indices = indices[0, :]  # 应该都是 0（手腕）
+                    task_indices = indices[1, :]    # 四个指尖的索引
+                    
+                    # 构建完整的 joint_pos（包含手腕 + 四指）
+                    # 索引 0 = 手腕（原点），索引 1-4 = 四指指尖
+                    joint_pos = np.zeros((5, 3), dtype=np.float32)
+                    joint_pos[0, :] = [0, 0, 0]  # 手腕在原点
+                    joint_pos[1:5, :] = transformed_pos  # 四指指尖
+                    
+                    ref_value = (joint_pos[task_indices, :] - joint_pos[origin_indices, :]) * scaling_factor
                     
                     # 关节顺序（从 URDF）：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, 
                     #                      index_mcp_pitch, index_dip, 
