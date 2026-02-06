@@ -1,8 +1,6 @@
 retargeting:
   type: vector
   urdf_path: o6_left/linkerhand_o6_left.urdf
-
-  # 只优化四个手指的 MCP
   target_joint_names: [
     "index_mcp_pitch",
     "middle_mcp_pitch",
