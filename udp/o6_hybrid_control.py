@@ -221,14 +221,16 @@ def main(
                     thumb_pitch = 255 - thumb_pitch
                     
                     # === 四指：vector retargeting ===
-                    # 正确的坐标转换：相对于手腕的坐标系
+                    # 坐标转换：世界坐标 -> 手腕局部坐标 -> 参考坐标系
                     wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
-                    transform_rot = ref_rot_fixed * wrist_rot.inv()
                     
-                    # 提取四指位置（索引 1-4）并转换到相对坐标系
-                    # sensors 中的位置已经是相对于手腕的，但需要旋转到正确的坐标系
                     four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
-                    transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
+                    
+                    # 步骤1：转换到手腕局部坐标系（去除手腕旋转的影响）
+                    local_pos = np.array([wrist_rot.inv().apply(pos) for pos in four_finger_pos])
+                    
+                    # 步骤2：应用参考坐标系转换（Y轴-90度）
+                    transformed_pos = np.array([ref_rot_fixed.apply(pos) for pos in local_pos])
                     
                     # 打印调试信息
                     if frame_count % 60 == 0:
@@ -236,10 +238,10 @@ def main(
                         print("\n=== 坐标转换调试 ===")
                         print(f"手腕四元数: {wrist_quat}")
                         for i, name in enumerate(finger_names):
-                            orig = four_finger_pos[i]
-                            trans = transformed_pos[i]
-                            length = np.linalg.norm(trans)
-                            print(f"{name:6s}: 原始={orig}, 转换后={trans}, 长度={length:.3f}")
+                            world = four_finger_pos[i]
+                            local = local_pos[i]
+                            final = transformed_pos[i]
+                            print(f"{name:6s}: 世界={world}, 局部={local}, 最终={final}")
                     
                     ref_value = transformed_pos * scaling_factor
                     
