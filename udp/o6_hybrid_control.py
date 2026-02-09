@@ -103,7 +103,6 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
     """
     motors = [thumb_motor_0, thumb_motor_1]
     
-    # 四指关节
     finger_joints = [
         "index_mcp_pitch",
         "middle_mcp_pitch",
@@ -117,7 +116,7 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
         motor_val = int(normalized * 255)
         motors.append(motor_val)
     
-    motors[2] = 255 - motors[2]
+    # motors[2] = 255 - motors[2]
     # motors[3] = 255 - motors[3]
     
     return motors
@@ -128,10 +127,10 @@ def main(
     can_interface="can0",
     dry_run=False,
     scaling_factor=1.0,
-    index_scale=1.0,
+    index_scale=1.5,
     middle_scale=1.0,
     ring_scale=1.0,
-    pinky_scale=1.0,
+    pinky_scale=2.0,
 ):
     linker_hand = None
     if not dry_run:
