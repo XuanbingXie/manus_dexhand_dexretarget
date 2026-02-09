@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-O6 手实时 Manus 手套 Retargeting 控制脚本
-
-O6 手特点：
-- 只有 6 个主动关节（2 个拇指 + 4 个手指 MCP）
-- 其他关节通过 mimic 约束自动跟随
-- 结构简单，控制直接
-"""
 import sys
 import time
 from pathlib import Path
@@ -33,7 +25,6 @@ except ImportError:
 
 
 class ManusUDPReceiver:
-    """接收 Manus 手套的 UDP 数据"""
     def __init__(self, port=5006):
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -57,7 +48,6 @@ def qpos_to_o6_motor_positions(qpos_dict, debug=False):
     4: ring_mcp_pitch
     5: pinky_mcp_pitch
     """
-    # O6 的 6 个主动关节
     required_joints = [
         "thumb_cmc_yaw",
         "thumb_cmc_pitch",
@@ -81,13 +71,9 @@ def qpos_to_o6_motor_positions(qpos_dict, debug=False):
         1.60,   # pinky_mcp_pitch: 0 to 1.60
     ])
     
-    # 归一化到 0-1
     ctrl_normalized = np.clip(ctrl / bounds, 0, 1)
-    
-    # 转换为 0-255 的电机指令
     cmd = np.round(ctrl_normalized * 255).astype(int)
     
-    # 根据实际电机方向调整（可能需要根据实际情况调整）
     invert_mask = np.array([255, 255, 255, 255, 0, 0])
     cmd = np.abs(cmd - invert_mask)
     
@@ -121,9 +107,6 @@ def main(
                 hand_joint=hand_joint,
                 can=can_interface
             )
-            logger.info(f"O6 {hand_type_str} hand initialized on {can_interface}")
-            
-            # 设置速度和扭矩（O6 只有 6 个电机）
             linker_hand.set_speed(speed=[255, 255, 255, 255, 255, 255])
             linker_hand.set_torque(torque=[200, 200, 200, 200, 200, 200])
         except Exception as e:
@@ -132,7 +115,6 @@ def main(
     else:
         logger.info("Dry run mode - no actual motor commands will be sent")
 
-    # 加载 O6 retargeting 配置
     hand_type_str = "right" if hand_type == HandType.right else "left"
     config_dir = Path(__file__).parent.parent / "dex-retargeting/src/dex_retargeting/configs/teleop"
     
@@ -153,7 +135,6 @@ def main(
     config = RetargetingConfig.load_from_file(str(config_path))
     retargeting = config.build()
     
-    # 使用 dof_joint_names（只包含主动关节，不包括 mimic 关节）
     active_joint_names = retargeting.optimizer.robot.dof_joint_names
     logger.info(f"O6 retargeting initialized with {len(active_joint_names)} active joints")
     logger.info(f"Active joint names: {active_joint_names}")
@@ -169,9 +150,7 @@ def main(
     last_print_time = time.time()
     last_data_time = time.time()
 
-    try:
-        logger.info("Starting retargeting loop... Press Ctrl+C to stop")
-        
+    try:        
         while True:
             frame_count += 1
             joint_pos = None
@@ -183,7 +162,6 @@ def main(
                 if len(nodes) >= 25:
                     joint_pos = np.zeros((25, 3), dtype=np.float32)
                     
-                    # 获取手腕作为参考点
                     parent_quat = nodes[0]['rotation']
                     parent_pos = nodes[0]['position']
                     parent_rot = R.from_quat(parent_quat)
@@ -215,8 +193,8 @@ def main(
                         ref_value = np.array(ref_vectors, dtype=np.float32)
                     else:
                         indices = retargeting.optimizer.target_link_human_indices
-                        origin_indices = indices[0, :]  # 都是 0（手腕）
-                        task_indices = indices[1, :]    # [4, 8, 12, 16, 20]（5 个指尖）
+                        origin_indices = indices[0, :]  
+                        task_indices = indices[1, :]   
                         ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
                         
                         if frame_count % 60 == 0:  # 每60帧打印一次
@@ -225,20 +203,15 @@ def main(
                             for i, name in enumerate(finger_names):
                                 vec_length = np.linalg.norm(ref_value[i])
                                 logger.debug(f"  {name}: length={vec_length:.3f}, vec={ref_value[i]}")
-                    
-                    # 应用整体缩放
+
                     ref_value = ref_value * scaling_factor
-                    
-                    # 执行 retargeting
                     qpos = retargeting.retarget(ref_value)
                     
-                    # 使用 dof_joint_names 构建关节角度字典（只包含主动关节）
                     active_joint_names = retargeting.optimizer.robot.dof_joint_names
                     qpos_dict = {}
                     for i, joint_name in enumerate(active_joint_names):
                         value = qpos[i]
-                        
-                        # 应用每个手指的独立缩放
+
                         if joint_name.startswith("thumb"):
                             value = value * thumb_scale
                         elif joint_name.startswith("index"):
@@ -253,7 +226,6 @@ def main(
                         qpos_dict[joint_name] = value
                     
                     if len(nodes) >= 25:
-                        # 无名指 MCP (节点16的旋转)
                         ring_quat = nodes[16]['rotation']  # [x, y, z, w]
                         from scipy.spatial.transform import Rotation as R_scipy
                         ring_rot = R_scipy.from_quat(ring_quat)
@@ -261,14 +233,12 @@ def main(
                         ring_angle = abs(ring_euler[1])  # pitch 角度
                         qpos_dict['ring_mcp_pitch'] = np.clip(ring_angle * ring_scale, 0, 1.60)
                         
-                        # 小指 MCP (节点21的旋转)
                         pinky_quat = nodes[21]['rotation']
                         pinky_rot = R_scipy.from_quat(pinky_quat)
                         pinky_euler = pinky_rot.as_euler('xyz', degrees=False)
                         pinky_angle = abs(pinky_euler[1])  # pitch 角度
                         qpos_dict['pinky_mcp_pitch'] = np.clip(pinky_angle * pinky_scale, 0, 1.60)
                     
-                    # 转换为电机位置
                     motor_positions = qpos_to_o6_motor_positions(qpos_dict)
                     
                     # 简化打印：只显示6个主动关节
@@ -280,11 +250,9 @@ def main(
                         logger.info(f"Motors: {motor_positions}")
                         last_print_time = time.time()
                     
-                    # 发送电机指令
                     if not dry_run and linker_hand is not None:
                         linker_hand.finger_move(pose=motor_positions)
                     
-                    # 统计 FPS
                     fps_counter.append(time.time())
                     
                 except Exception as e:
@@ -292,12 +260,10 @@ def main(
                     import traceback
                     traceback.print_exc()
 
-            # 检查数据超时
             if time.time() - last_data_time > 2.0:
                 if frame_count % 100 == 0:
                     logger.warning("No Manus data received for 2 seconds")
 
-            # 计算并显示 FPS
             if time.time() - fps_start_time >= 10.0:
                 if fps_counter:
                     fps = len(fps_counter) / (time.time() - fps_start_time)
@@ -308,7 +274,6 @@ def main(
     except KeyboardInterrupt:
         logger.info("Stopping retargeting...")
     finally:
-        # 清理资源
         manus_receiver.close()
         if linker_hand is not None:
             logger.info("Closing O6 hand connection")
