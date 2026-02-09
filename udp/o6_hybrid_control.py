@@ -113,7 +113,6 @@ def qpos_to_o6_motors(thumb_motor_0, thumb_motor_1, qpos_dict):
     
     for joint_name in finger_joints:
         angle = qpos_dict.get(joint_name, 0.0)
-        # 归一化到 0-1
         normalized = np.clip(angle / 1.60, 0, 1)
         motor_val = int(normalized * 255)
         motors.append(motor_val)
@@ -134,19 +133,6 @@ def main(
     ring_scale=1.0,
     pinky_scale=1.0,
 ):
-    """
-    主函数
-    
-    Args:
-        hand_type: "left" 或 "right"
-        can_interface: CAN接口名称
-        dry_run: 测试模式
-        scaling_factor: 整体缩放因子
-        index_scale: 食指缩放
-        middle_scale: 中指缩放
-        ring_scale: 无名指缩放
-        pinky_scale: 小指缩放
-    """
     linker_hand = None
     if not dry_run:
         if not LINKER_AVAILABLE:
@@ -210,8 +196,6 @@ def main(
                 if sensors is not None and wrist_quat is not None:
                     if np.linalg.norm(wrist_quat) < 0.01:
                         continue
-                    
-                    # === 拇指：简单映射 ===
                     thumb_pos = sensors[0, :3]
                     thumb_len = np.linalg.norm(thumb_pos)
                     thumb_yaw = int(np.clip((0.12 - thumb_len) / 0.03 * 255, 0, 255))
@@ -219,39 +203,29 @@ def main(
                     thumb_yaw = 255 - thumb_yaw
                     thumb_pitch = 255 - thumb_pitch
                     
-                    # === 四指：vector retargeting ===
-                    # 应用组合的旋转变换：ref_rot_fixed * wrist_rot.inv()
-                    wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
-                    transform_rot = ref_rot_fixed * wrist_rot.inv()
+                    # wrist_rot = R.from_quat([wrist_quat[1], wrist_quat[2], wrist_quat[3], wrist_quat[0]])
+                    # transform_rot = ref_rot_fixed * wrist_rot.inv()
                     
-                    four_finger_pos = sensors[1:5, :3]  # shape (4, 3)
-                    transformed_pos = np.array([transform_rot.apply(pos) for pos in four_finger_pos])
+                    four_finger_pos = sensors[1:5, :3] 
+                    transformed_pos = np.array([ref_rot_fixed.apply(pos) for pos in four_finger_pos])
                     
                     indices = retargeting.optimizer.target_link_human_indices
-                    origin_indices = indices[0, :]  # 应该都是 0（手腕）
-                    task_indices = indices[1, :]    # 四个指尖的索引
+                    origin_indices = indices[0, :] 
+                    task_indices = indices[1, :]    
 
                     joint_pos = np.zeros((5, 3), dtype=np.float32)
-                    joint_pos[0, :] = [0, 0, 0]  # 手腕在原点
-                    joint_pos[1:5, :] = transformed_pos  # 四指指尖
+                    joint_pos[0, :] = [0, 0, 0]  
+                    joint_pos[1:5, :] = transformed_pos  
                     
                     ref_value = (joint_pos[task_indices, :] - joint_pos[origin_indices, :]) * scaling_factor
                     
-                    # 关节顺序（从 URDF）：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, 
-                    #                      index_mcp_pitch, index_dip, 
-                    #                      middle_mcp_pitch, middle_dip,
-                    #                      ring_mcp_pitch, ring_dip,
-                    #                      pinky_mcp_pitch, pinky_dip
-                    # 目标关节（4个）：index_mcp_pitch, middle_mcp_pitch, ring_mcp_pitch, pinky_mcp_pitch
-                    # 固定关节（7个）：thumb_cmc_yaw, thumb_cmc_pitch, thumb_ip, index_dip, middle_dip, ring_dip, pinky_dip
                     thumb_yaw_rad = (thumb_yaw / 255.0) * 1.3  
                     thumb_pitch_rad = (thumb_pitch / 255.0) * 0.58
                     thumb_ip_rad = thumb_pitch_rad * 2.29  # mimic 关系
                     fixed_qpos = np.array([
-                        thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad,  # 拇指 3 个关节
+                        thumb_yaw_rad, thumb_pitch_rad, thumb_ip_rad,  
                         0.0, 0.0, 0.0, 0.0  
                     ])
-                    
                     qpos = retargeting.retarget(ref_value, fixed_qpos=fixed_qpos)
                     
                     active_joint_names = retargeting.optimizer.robot.dof_joint_names
