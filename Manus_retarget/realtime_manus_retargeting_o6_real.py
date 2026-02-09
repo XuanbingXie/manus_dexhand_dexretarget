@@ -234,7 +234,6 @@ def main(
                     
                     motor_positions = qpos_to_o6_motor_positions(qpos_dict)
                     
-                    # 简化打印：只显示6个主动关节
                     if time.time() - last_print_time >= 3.0:
                         logger.info("Joints(rad): thumb_y={:.2f} thumb_p={:.2f} | idx={:.2f} mid={:.2f} ring={:.2f} pinky={:.2f}".format(
                             qpos_dict.get('thumb_cmc_yaw', 0), qpos_dict.get('thumb_cmc_pitch', 0),
