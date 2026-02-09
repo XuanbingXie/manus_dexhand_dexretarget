@@ -197,13 +197,6 @@ def main(
                         task_indices = indices[1, :]   
                         ref_value = joint_pos[task_indices, :] - joint_pos[origin_indices, :]
                         
-                        if frame_count % 60 == 0:  # 每60帧打印一次
-                            finger_names = ["thumb", "index", "middle", "ring", "pinky"]
-                            logger.debug("Finger tip vectors from wrist:")
-                            for i, name in enumerate(finger_names):
-                                vec_length = np.linalg.norm(ref_value[i])
-                                logger.debug(f"  {name}: length={vec_length:.3f}, vec={ref_value[i]}")
-
                     ref_value = ref_value * scaling_factor
                     qpos = retargeting.retarget(ref_value)
                     
