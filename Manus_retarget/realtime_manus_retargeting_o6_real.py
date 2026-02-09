@@ -15,6 +15,7 @@ from dex_retargeting.constants import HandType
 from dex_retargeting.retargeting_config import RetargetingConfig
 from manus_skeleton_parser import ManusSkeletonParser
 import socket
+from scipy.spatial.transform import Rotation as R_scipy
 
 try:
     from LinkerHand.linker_hand_api import LinkerHandApi
@@ -220,7 +221,6 @@ def main(
                     
                     if len(nodes) >= 25:
                         ring_quat = nodes[16]['rotation']  # [x, y, z, w]
-                        from scipy.spatial.transform import Rotation as R_scipy
                         ring_rot = R_scipy.from_quat(ring_quat)
                         ring_euler = ring_rot.as_euler('xyz', degrees=False)
                         ring_angle = abs(ring_euler[1])  
@@ -245,6 +245,7 @@ def main(
                     if not dry_run and linker_hand is not None:
                         linker_hand.finger_move(pose=motor_positions)
                     
+
                     fps_counter.append(time.time())
                     
                 except Exception as e:
