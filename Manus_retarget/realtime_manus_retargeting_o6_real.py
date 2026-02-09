@@ -218,19 +218,19 @@ def main(
                         
                         qpos_dict[joint_name] = value
                     
-                    if len(nodes) >= 25:
-                        ring_quat = nodes[16]['rotation']  # [x, y, z, w]
-                        from scipy.spatial.transform import Rotation as R_scipy
-                        ring_rot = R_scipy.from_quat(ring_quat)
-                        ring_euler = ring_rot.as_euler('xyz', degrees=False)
-                        ring_angle = abs(ring_euler[1])  # pitch 角度
-                        qpos_dict['ring_mcp_pitch'] = np.clip(ring_angle * ring_scale, 0, 1.60)
+                    # if len(nodes) >= 25:
+                    #     ring_quat = nodes[16]['rotation']  # [x, y, z, w]
+                    #     from scipy.spatial.transform import Rotation as R_scipy
+                    #     ring_rot = R_scipy.from_quat(ring_quat)
+                    #     ring_euler = ring_rot.as_euler('xyz', degrees=False)
+                    #     ring_angle = abs(ring_euler[1])  
+                    #     qpos_dict['ring_mcp_pitch'] = np.clip(ring_angle * ring_scale, 0, 1.60)
                         
-                        pinky_quat = nodes[21]['rotation']
-                        pinky_rot = R_scipy.from_quat(pinky_quat)
-                        pinky_euler = pinky_rot.as_euler('xyz', degrees=False)
-                        pinky_angle = abs(pinky_euler[1])  # pitch 角度
-                        qpos_dict['pinky_mcp_pitch'] = np.clip(pinky_angle * pinky_scale, 0, 1.60)
+                    #     pinky_quat = nodes[21]['rotation']
+                    #     pinky_rot = R_scipy.from_quat(pinky_quat)
+                    #     pinky_euler = pinky_rot.as_euler('xyz', degrees=False)
+                    #     pinky_angle = abs(pinky_euler[1])  
+                    #     qpos_dict['pinky_mcp_pitch'] = np.clip(pinky_angle * pinky_scale, 0, 1.60)
                     
                     motor_positions = qpos_to_o6_motor_positions(qpos_dict)
                     
