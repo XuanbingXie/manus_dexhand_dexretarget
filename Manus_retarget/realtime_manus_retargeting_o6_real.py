@@ -75,7 +75,7 @@ def qpos_to_o6_motor_positions(qpos_dict, debug=False):
     ctrl_normalized = np.clip(ctrl / bounds, 0, 1)
     cmd = np.round(ctrl_normalized * 255).astype(int)
     
-    invert_mask = np.array([255, 255, 255, 255, 0, 0])
+    invert_mask = np.array([255, 255, 255, 255, 255, 255])
     cmd = np.abs(cmd - invert_mask)
     
     return cmd.tolist()
@@ -92,15 +92,14 @@ def main(
     thumb_scale: float = 1.4,
     index_scale: float = 2.0,
     middle_scale: float = 3.0,
-    ring_scale: float = 2.0,
-    pinky_scale: float = 2.5,
+    ring_scale: float = 1.0,
+    pinky_scale: float = 1.0,
 ):
     linker_hand = None
     if not dry_run:
         if not LINKER_AVAILABLE:
             logger.error("LinkerHand SDK not available")
             return
-            
         try:
             hand_type_str = "right" if hand_type == HandType.right else "left"
             linker_hand = LinkerHandApi(
@@ -109,7 +108,7 @@ def main(
                 can=can_interface
             )
             linker_hand.set_speed(speed=[255, 255, 255, 255, 255, 255])
-            linker_hand.set_torque(torque=[200, 200, 200, 200, 200, 200])
+            linker_hand.set_torque(torque=[255, 255, 255, 255, 255, 255])
         except Exception as e:
             logger.error(f"Failed to initialize O6 hand: {e}")
             return
@@ -162,7 +161,6 @@ def main(
                 
                 if len(nodes) >= 25:
                     joint_pos = np.zeros((25, 3), dtype=np.float32)
-                    
                     parent_quat = nodes[0]['rotation']
                     parent_pos = nodes[0]['position']
                     parent_rot = R.from_quat(parent_quat)
@@ -180,7 +178,7 @@ def main(
                 
                 try:
                     if use_dexpilot:
-                        fingertip_indices = [4, 8, 12, 16, 20]  # 5 个指尖
+                        fingertip_indices = [4, 9, 14, 19, 24]  
                         fingertip_pos = joint_pos[fingertip_indices, :]
                         wrist_pos = joint_pos[0, :]
                         
@@ -218,33 +216,11 @@ def main(
                             value = value * pinky_scale
                         
                         qpos_dict[joint_name] = value
-                    
-                    if len(nodes) >= 25:
-                        ring_quat = nodes[16]['rotation']  # [x, y, z, w]
-                        ring_rot = R_scipy.from_quat(ring_quat)
-                        ring_euler = ring_rot.as_euler('xyz', degrees=False)
-                        ring_angle = abs(ring_euler[1])  
-                        qpos_dict['ring_mcp_pitch'] = np.clip(ring_angle * ring_scale, 0, 1.60)
-                        
-                        pinky_quat = nodes[21]['rotation']
-                        pinky_rot = R_scipy.from_quat(pinky_quat)
-                        pinky_euler = pinky_rot.as_euler('xyz', degrees=False)
-                        pinky_angle = abs(pinky_euler[1])  
-                        qpos_dict['pinky_mcp_pitch'] = np.clip(pinky_angle * pinky_scale, 0, 1.60)
-                    
+                                      
                     motor_positions = qpos_to_o6_motor_positions(qpos_dict)
-                    
-                    if time.time() - last_print_time >= 3.0:
-                        logger.info("Joints(rad): thumb_y={:.2f} thumb_p={:.2f} | idx={:.2f} mid={:.2f} ring={:.2f} pinky={:.2f}".format(
-                            qpos_dict.get('thumb_cmc_yaw', 0), qpos_dict.get('thumb_cmc_pitch', 0),
-                            qpos_dict.get('index_mcp_pitch', 0), qpos_dict.get('middle_mcp_pitch', 0),
-                            qpos_dict.get('ring_mcp_pitch', 0), qpos_dict.get('pinky_mcp_pitch', 0)))
-                        logger.info(f"Motors: {motor_positions}")
-                        last_print_time = time.time()
                     
                     if not dry_run and linker_hand is not None:
                         linker_hand.finger_move(pose=motor_positions)
-                    
 
                     fps_counter.append(time.time())
                     

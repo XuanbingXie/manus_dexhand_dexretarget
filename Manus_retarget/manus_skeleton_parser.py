@@ -12,7 +12,6 @@ class ManusSkeletonParser:
     """解析 Manus 手套的 25 节点骨骼数据"""
     
     def __init__(self):
-        # Manus 25 节点的映射
         self.node_mapping = {
             'wrist': 0,
             'thumb': [1, 2, 3, 4],      # CMC, MCP, IP, Tip
@@ -21,16 +20,6 @@ class ManusSkeletonParser:
             'ring': [15, 16, 17, 18, 19],
             'pinky': [20, 21, 22, 23, 24]
         }
-        
-        # MediaPipe 21 关键点索引
-        # 0: 手腕
-        # 1-4: 拇指 (CMC, MCP, IP, Tip)
-        # 5-8: 食指 (MCP, PIP, DIP, Tip)
-        # 9-12: 中指
-        # 13-16: 无名指
-        # 17-20: 小指
-        
-        # Manus 节点到 MediaPipe 的映射
         self.manus_to_mediapipe = {
             0: 0,   # 手腕
             # 拇指
